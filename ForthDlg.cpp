@@ -19,7 +19,7 @@
 
 CForthDlg::CForthDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CForthDlg::IDD, pParent)
-	, memSize(4096)
+	, memSize(8192)
 	, retStackSize(256)
 	, commands(_T(".bs"))
 	, output(_T(""))
