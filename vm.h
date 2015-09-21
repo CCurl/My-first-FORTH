@@ -45,5 +45,7 @@ typedef enum {
 	I_GOTO,
 	I_DOT,
 	I_TYPE,
+	I_CALL, 
+	I_OVER,
 	I_RETURN = 99,
 } INSTR_T;

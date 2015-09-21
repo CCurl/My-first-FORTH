@@ -37,17 +37,17 @@ int ForthOS::COMMA(int val)
 
 int ForthOS::Create(int name, int flags)
 {
-	// Create HERE (CUR) ! LAST , <flags> , ;
+	// Create HERE (CUR) ! LAST , <flags> , <counted-name> (CUR) @ , ;
 	MemSet(CUR_WORD, HERE());
 	COMMA(LAST());
 	COMMA(flags);
-	int len = MemGet(name);
+	int len = MemGet(name++);
 	COMMA(len);
 	for (int i = 1; i <= len; i++)
 	{
-		COMMA(MemGet(name + i));
+		COMMA(MemGet(name++));
 	}
-	MemSet(STATE_ADDRESS, 1);
+	COMMA(MemGet(CUR_WORD));
 	return HERE();
 }
 
@@ -103,6 +103,19 @@ int ForthOS::DoExecute()
 		INSTR_T instr = (INSTR_T)MemGet(IP++);
 		switch (instr)
 		{
+		case I_CALL:
+			addr = MemGet(IP++);
+			RPUSH(IP);
+			IP = addr;
+			break;
+
+		case I_RETURN:
+			if (RSP > 0)
+				IP = RPOP();
+			else
+				return IP;
+			break;
+
 		case I_STORE:
 			addr = POP();
 			val = POP();
@@ -124,8 +137,8 @@ int ForthOS::DoExecute()
 
 		case I_SWAP:
 			arg2 = POP();
-			arg1 = POP(); 
-			PUSH(arg2); 
+			arg1 = POP();
+			PUSH(arg2);
 			PUSH(arg1);
 			break;
 
@@ -265,18 +278,14 @@ int ForthOS::DoExecute()
 			PUSH((POP() > POP()) ? -1 : 0);
 			break;
 
-		case I_PICK:
-		{
-			int num = POP(), from = SP - num - 1;
-			PUSH(from >= 0 ? stack[from] : 0);
-		}
-			break;
+		case I_OVER:
+			PUSH(1);
+			// NO break, ... : OVER 1 PICK ;
 
-		case I_RETURN:
-			if (RSP > 0)
-				IP = RPOP();
-			else
-				return IP;
+		case I_PICK:
+			arg1 = POP();
+			arg2 = SP - arg1 - 1;
+			PUSH(arg2 >= 0 ? stack[arg2] : 0);
 			break;
 
 		case I_DOT:
@@ -309,8 +318,10 @@ int ForthOS::DoExecute()
 
 		default:
 			// Must be a user defined word
-			RPUSH(IP);
-			IP = (int) instr;
+		{
+				   CString err; err.Format(_T("invalid instruction: %d"), instr);
+				   throw err;
+		}
 			break;
 		}
 	}
@@ -318,208 +329,342 @@ int ForthOS::DoExecute()
 	return 0;
 }
 
+void ForthOS::Compile(int num, ...)
+{
+	int here = HERE();
+	va_list code;
+	va_start(code, num);
+	int val = va_arg(code, int);
+	while (val != COMPILE_BREAK)
+	{
+		MemSet(here++, val);
+		val = va_arg(code, int);
+	}
+	va_end(code);
+	MemSet(HERE_ADDRESS, here);
+	EndWord();
+}
+
 void ForthOS::BootStrap()
 {
 	// Reset Here pointer
+	// MemSet(HERE_ADDRESS, CORE_START);
 	MemSet(HERE_ADDRESS, DICT_START);
 	MemSet(LAST_ADDRESS, MemGet(HERE_ADDRESS));
-	MemSet(BASE_ADDRESS, 10);
+	MemSet(BASE_ADDRESS, 10); // Decimal
 
 	COMMA(0); // End of word chain
 
-	// Built-In VAR: STATE
-	Create(StringToMem(SOURCE_ADDRESS, _T("STATE")), FLAG_IS_NORMAL);
-	CommaLiteral(STATE_ADDRESS);
-	COMMA(I_RETURN);
-	EndWord();
+	// Built-In WORD: , ( n -- )
+	// : , (HERE) @ SWAP OVER ! 1+ (HERE) ! ;
+	xtComma = Create(StringToMem(SOURCE_ADDRESS, _T(",")), FLAG_IS_NORMAL);
+	Compile(0, 
+		I_LITERAL, HERE_ADDRESS, I_FETCH, 
+		I_SWAP, I_OVER, I_STORE,
+		I_ONEPLUS,
+		I_LITERAL, HERE_ADDRESS, I_STORE,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In VAR: (HERE)
 	Create(StringToMem(SOURCE_ADDRESS, _T("(HERE)")), FLAG_IS_NORMAL);
-	CommaLiteral(HERE_ADDRESS);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, HERE_ADDRESS, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
 
-	// Built-In WORD: HERE
-	// : HERE (HERE) @ ;
 	int xtHERE = Create(StringToMem(SOURCE_ADDRESS, _T("HERE")), FLAG_IS_NORMAL);
-	CommaLiteral(HERE_ADDRESS);
-	COMMA(I_FETCH);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, HERE_ADDRESS, I_FETCH, 
+		I_RETURN, COMPILE_BREAK);
+
+	// Built-In VAR: STATE
+	Create(StringToMem(SOURCE_ADDRESS, _T("STATE")), FLAG_IS_NORMAL);
+	Compile(0,
+		I_LITERAL, STATE_ADDRESS, 
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: SOURCE
 	Create(StringToMem(SOURCE_ADDRESS, _T("SOURCE")), FLAG_IS_NORMAL);
-	CommaLiteral(SOURCE_ADDRESS);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, SOURCE_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: >IN
 	Create(StringToMem(SOURCE_ADDRESS, _T(">IN")), FLAG_IS_NORMAL);
-	CommaLiteral(TOIN_ADDRESS);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, TOIN_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: BASE
 	Create(StringToMem(SOURCE_ADDRESS, _T("BASE")), FLAG_IS_NORMAL);
-	CommaLiteral(BASE_ADDRESS);
-	COMMA(I_RETURN);
-	EndWord();
-
-	// Built-In WORD: , (COMMA)
-	// : , HERE ! HERE 1+ (HERE) ! ;
-	xtComma = Create(StringToMem(SOURCE_ADDRESS, _T(",")), FLAG_IS_NORMAL);
-	CommaCall(xtHERE);
-	COMMA(I_STORE);
-	CommaCall(xtHERE);
-	COMMA(I_ONEPLUS);
-	CommaLiteral(HERE_ADDRESS);
-	COMMA(I_STORE);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, BASE_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: @ (I_FETCH)
 	// : <BUILDS I_FETCH , DOES> I_FETCH ; IMMEDIATE
 	int xtFetch = Create(StringToMem(SOURCE_ADDRESS, _T("@")), FLAG_IS_IMMEDIATE);
-	// <BUILDS
-	CommaLiteral(STATE_ADDRESS);
-	COMMA(I_FETCH);
-	int tgt = COMMA(I_IF_RT);
-	COMMA(0);
-	CommaLiteral(I_FETCH);
-	CommaCall(xtComma);
-	COMMA(I_RETURN);
-	// DOES>
-	MemSet(tgt, MemGet(HERE_ADDRESS));
-	COMMA(I_FETCH);
-	COMMA(I_RETURN);
-	EndWord();
+	// STATE @ 1 = IF ELSE THEN ;
+	Compile(0,
+		I_LITERAL, STATE_ADDRESS, I_FETCH,
+		I_IF_RT, HERE() + 11,
+		I_LITERAL, I_FETCH,
+		I_CALL, xtComma,
+		I_GOTO, HERE() + 12,
+		I_FETCH,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: ! (STORE)
 	// : ! <BUILDS STORE , DOES> STORE ; IMMEDIATE
 	int xtSTORE = Create(StringToMem(SOURCE_ADDRESS, _T("!")), FLAG_IS_IMMEDIATE);
-	// <BUILDS
-	CommaLiteral(STATE_ADDRESS);
-	COMMA(I_FETCH);
-	tgt = COMMA(I_IF_RT);
-	COMMA(0);
-	CommaLiteral(I_STORE);
-	CommaCall(xtComma);
-	COMMA(I_RETURN);
-	// DOES>
-	MemSet(tgt, MemGet(HERE_ADDRESS));
-	COMMA(I_STORE);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, STATE_ADDRESS, I_FETCH,
+		I_IF_RT, HERE() + 11,
+		I_LITERAL, I_STORE,
+		I_CALL, xtComma,
+		I_GOTO, HERE() + 12,
+		I_STORE,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: +
 	// : ! <BUILDS STORE , DOES> STORE ; IMMEDIATE
 	int xtPLUS = Create(StringToMem(SOURCE_ADDRESS, _T("+")), FLAG_IS_IMMEDIATE);
-	// <BUILDS
-	CommaLiteral(STATE_ADDRESS);
-	COMMA(I_FETCH);
-	tgt = COMMA(I_IF_RT);
-	COMMA(0);
-	CommaLiteral(I_PLUS);
-	CommaCall(xtComma);
-	COMMA(I_RETURN);
-	// DOES>
-	MemSet(tgt, MemGet(HERE_ADDRESS));
-	COMMA(I_PLUS);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, STATE_ADDRESS, I_FETCH,
+		I_IF_RT, HERE() + 11,
+		I_LITERAL, I_PLUS,
+		I_CALL, xtComma,
+		I_GOTO, HERE() + 12,
+		I_PLUS,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: (LAST)
 	int xtLastVar = Create(StringToMem(SOURCE_ADDRESS, _T("(LAST)")), FLAG_IS_NORMAL);
-	CommaLiteral(LAST_ADDRESS);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, LAST_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: LAST
 	// : LAST (LAST) @ ;
 	int xtLAST = Create(StringToMem(SOURCE_ADDRESS, _T("LAST")), FLAG_IS_NORMAL);
-	CommaCall(xtLastVar);
-	COMMA(I_FETCH);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, LAST_ADDRESS, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In VAR: (cw)
 	Create(StringToMem(SOURCE_ADDRESS, _T("(cw)")), FLAG_IS_NORMAL);
-	CommaLiteral(CUR_WORD);
-	COMMA(I_RETURN);
-	EndWord();
-
-	//// Built-In WORD: call,
-	//Create(StringToMem(INPUT_START, _T("call,")), FLAG_IS_IMMEDIATE);
-	//CommaLiteral(CALL);
-	//CommaCall(xtComma);
-	//CommaLiteral(xtComma);
-	//CommaCall(xtComma);
-	//COMMA(I_RETURN);
-	//EndWord();
+	Compile(0,
+		I_LITERAL, CUR_WORD,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: ; (END-WORD)
-	// : ; <I_RETURN> , LAST (cw) @ ! (cw) @ (LAST) ! 0 STATE ! ; IMMEDIATE
+	// : ; <I_RETURN> , (cw) @ (LAST) ! 0 STATE ! ; IMMEDIATE
 	int addrSemiColon = Create(StringToMem(SOURCE_ADDRESS, _T(";")), FLAG_IS_IMMEDIATE);
-	CommaLiteral(I_RETURN);
-	CommaCall(xtComma);
-	CommaLiteral(CUR_WORD);
-	COMMA(I_FETCH);
-	CommaLiteral(LAST_ADDRESS);
-	COMMA(I_STORE);
-	CommaLiteral(0);
-	CommaLiteral(STATE_ADDRESS);
-	COMMA(I_STORE);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, I_RETURN, 
+		I_CALL, xtComma,
+		I_LITERAL, CUR_WORD, I_FETCH,
+		I_LITERAL, LAST_ADDRESS, I_STORE,
+		I_LITERAL, 0, I_LITERAL, STATE_ADDRESS, I_STORE,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: IF ( -- c-addr )
 	// Check the STATE; if interpreting, 
 	Create(StringToMem(SOURCE_ADDRESS, _T("IF")), FLAG_IS_IMMEDIATE);
-	COMMA(I_IF);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, I_IF,
+		I_CALL, xtComma,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: ELSE ( c-addr -- c-addr )
 	Create(StringToMem(SOURCE_ADDRESS, _T("ELSE")), FLAG_IS_IMMEDIATE);
-	COMMA(I_ELSE);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, I_ELSE,
+		I_CALL, xtComma,
+		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: ENDIF ( c-addr -- )
 	Create(StringToMem(SOURCE_ADDRESS, _T("ENDIF")), FLAG_IS_IMMEDIATE);
-	COMMA(I_ENDIF);
-	COMMA(I_RETURN);
-	EndWord();
+	Compile(0,
+		I_LITERAL, I_ENDIF,
+		I_CALL, xtComma,
+		I_RETURN, COMPILE_BREAK);
+
+	PUSH(99999);
+	EXECUTE(xtComma);
 }
 
-void ForthOS::DumpHelper(CString& ret1, CString& ret2, int val, bool pad)
+int ForthOS::DumpInstr(int xt, CString& ret)
 {
-	CString t1; 
-	if (pad) t1.Format(_T(" %04d"), val);
-	else t1.Format(_T(" %d"), val);
+	int addr = 0, val;
+	ret.Format(_T("%04d: "), xt);
 
-	ret1 += t1;
+	INSTR_T instr = (INSTR_T)MemGet(xt++);
+	switch (instr)
+	{
+	case I_CALL:
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T("I_CALL %04d"), addr);
+		break;
 
-	if (val > 31 && val < 127)
-	{
-		t1.Format(_T("%c"), val);
-		ret2 += t1;
+	case I_RETURN:
+		ret.AppendFormat(_T("I_RETURN"));
+		break;
+
+	case I_STORE:
+		ret.AppendFormat(_T("I_STORE"));
+		break;
+
+	case I_FETCH:
+		ret.AppendFormat(_T("I_FETCH"));
+		break;
+
+	case I_LITERAL:
+		val = MemGet(xt++);
+		ret.AppendFormat(_T("I_LITERAL %d"), val);
+		break;
+
+	case I_DROP:
+		ret.Format(_T("I_DROP"));
+		break;
+
+	case I_SWAP:
+		ret.AppendFormat(_T("I_SWAP"));
+		break;
+
+	case I_DUP:
+		ret.AppendFormat(_T("I_DUP"));
+		break;
+
+	case I_ROT:
+		ret.AppendFormat(_T("I_ROT"));
+		break;
+
+	case I_IF:
+		ret.AppendFormat(_T("I_IF"));
+		break;
+
+	case I_ELSE:
+		ret.AppendFormat(_T("I_ELSE"));
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T(" (GOTO %d)"), addr);
+		break;
+
+	case I_ENDIF:
+		ret.AppendFormat(_T("I_ENDIF"));
+		break;
+
+	case I_IF_RT:
+		ret.AppendFormat(_T("I_IF_RT"));
+		// JUMP to ELSE or ENDIF if FALSE
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T(" (0 = IF GOTO %d)"), addr);
+		break;
+
+	case I_GOTO:
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T("I_GOTO %04d"), addr);
+		break;
+
+	case I_DO:
+		ret.AppendFormat(_T("I_DO"));
+		break;
+
+	case I_I:
+		ret.AppendFormat(_T("I_I"));
+		break;
+
+	case I_LEAVE:
+		ret.AppendFormat(_T("I_LEAVE"));
+		break;
+
+	case I_PLUSLOOP:
+		ret.AppendFormat(_T("I_PLUSLOOP"));
+		break;
+
+	case I_LOOP:
+		ret.AppendFormat(_T("I_LOOP"));
+		break;
+
+	case I_ONEPLUS:
+		ret.AppendFormat(_T("I_ONEPLUS"));
+		break;
+
+	case I_PLUS:
+		ret.AppendFormat(_T("I_PLUS"));
+		break;
+
+	case I_MINUS:
+		ret.AppendFormat(_T("I_MINUS"));
+		break;
+
+	case I_MULT:
+		ret.AppendFormat(_T("I_MULT"));
+		break;
+
+	case I_DIV:
+		ret.AppendFormat(_T("I_DIV"));
+		break;
+
+	case I_EQ:
+		ret.AppendFormat(_T("I_EQ"));
+		break;
+
+	case I_NEQ:
+		ret.AppendFormat(_T("I_NEQ"));
+		break;
+
+	case I_GT:
+		ret.AppendFormat(_T("I_GT"));
+		break;
+
+	case I_LT:
+		ret.AppendFormat(_T("I_LT"));
+		break;
+
+	case I_OVER:
+		ret.AppendFormat(_T("I_OVER ... 1 "));
+		// NO break, ... : OVER 1 PICK ;
+
+	case I_PICK:
+		ret.AppendFormat(_T("I_PICK"));
+		break;
+
+	case I_DOT:
+		ret.AppendFormat(_T("I_DOT"));
+		break;
+
+	case I_TYPE:
+		ret.AppendFormat(_T("I_TYPE"));
+		break;
+
+	default:
+		// Must be a user defined word
+		ret.AppendFormat(_T(".INT %d"), instr);
+		break;
 	}
-	else
+	return xt;
+}
+
+int ForthOS::DumpWord(int xt, CString& ret, int stopHere)
+{
+	CString def;
+	ret.Empty();
+
+	while (xt < stopHere)
 	{
-		ret2 += _T(".");
+		xt = DumpInstr(xt, def);
+		ret.AppendFormat(_T("%s\r\n"), def);
 	}
+	return xt;
 }
 
 void ForthOS::DumpStack(CString& ret)
 {
-	CString t2;
 	ret.Format(_T("SP: %d  -  "), SP);
 	for (int addr = 0; addr < SP; addr++)
 	{
-		DumpHelper(ret, t2, stack[addr], false);
+		ret.AppendFormat(_T("%d "), stack[addr]);
 	}
-	ret += _T("    "); ret += t2;
 }
 
 void ForthOS::Dump(CString& ret)
@@ -544,23 +689,51 @@ void ForthOS::Dump(CString& ret)
 	//}
 	//ret += t2;
 	//ret += "\r\n";
-	for (int addr = 0; addr < 100; addr++)
+	for (int i = 0; i < 100; i++)
 	{
-		ret.AppendFormat(_T("   [%-2d] %-4d"), addr, MemGet(addr));
-		if ((addr%10 == 0) && (addr > 0))
+		ret.AppendFormat(_T("   [%-2d] %-4d"), i, MemGet(i));
+		if ((i%10 == 0) && (i > 0))
 			ret.Append(_T("\r\n"));
 	}
 	ret.Append(_T("\r\n"));
 
-	for (int addr = DICT_START; addr < HERE(); addr++)
+	CString hdr, def;
+	int addr = MemGet(LAST_ADDRESS);
+	int thisWord = addr;
+	int stopHere = HERE();
+	while (addr != 0)
 	{
-		int c = MemGet(addr);
-		ret.AppendFormat(_T("\r\n %04d: %-4d"), addr, c);
-		if ((c > 31) && (c < 128))
+		def.Format(_T("%04d: ; "), addr);
+		int prev = MemGet(addr++);
+		int imm = MemGet(addr++);
+		int len = MemGet(addr++);
+		def.AppendFormat(_T("%04d %s (%d) "), prev, imm ? _T("(immediate)") : _T(""), len);
+		for (int i = 0; i < len; i++)
 		{
-			ret.AppendFormat(_T("\t\t'%c'"), c);
+			int c = MemGet(addr++);
+			def.AppendChar((CHAR)c);
 		}
+		int wordStart = MemGet(addr++);
+		hdr.Format(_T("%s (%04d)"), def, wordStart);
+		addr = DumpWord(addr, def, stopHere);
+		CString fullDef;
+		fullDef.AppendFormat(_T("%s\r\n%s\r\n"), hdr, def);
+		ret.Append(fullDef);
+
+		stopHere = thisWord;
+		thisWord = MemGet(thisWord);
+		addr = thisWord;
 	}
+
+	//for (int addr = DICT_START; addr < HERE(); addr++)
+	//{
+	//	int c = MemGet(addr);
+	//	ret.AppendFormat(_T("\r\n %04d: %-4d"), addr, c);
+	//	if ((c > 31) && (c < 128))
+	//	{
+	//		ret.AppendFormat(_T("\t\t'%c'"), c);
+	//	}
+	//}
 
 	//t2.Format(_T(" %04d: "), DICT_START);
 	//int gotoThis = MemGet(HERE_ADDRESS);
@@ -621,7 +794,7 @@ int ForthOS::TICK(int nameAddr, bool& isImmediate)
 		if (CompareStrings(wordName, nameAddr))
 		{
 			int len = MemGet(addr);
-			return addr + len + 1;
+			return addr + len + 2;
 		}
 		thisWord = nextWord;
 	}

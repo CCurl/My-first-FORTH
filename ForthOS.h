@@ -13,28 +13,33 @@
 
 #define TOIN_ADDRESS 9 // >IN
 #define SOURCE_ADDRESS 10 // the "input buffer"
+#define CORE_SIZE 2500
+#define CORE_START (memorySize - CORE_SIZE)
 #define DICT_START 1000
+
+#define COMPILE_BREAK -999999
 
 #define STATE_INTERPRETING 0
 #define STATE_COMPILING 1
 #define STATE_IMMEDIATE 2
 
-#define MEMORY_SIZE 4096
+#define MEMORY_SIZE (8*(1024))
 #define STACK_SIZE 128 // Data stack
 #define CSTACK_SIZE 32 // Conditional stack
 #define RSTACK_SIZE 32 // Return stack
 
-class CStackEntry 
+
+class CStackEntry
 {
 public:
-	CStackEntry() 
+	CStackEntry()
 	{
 		loop_start_addr = 0;
 		loop_index = 0;
 		loop_increment = 0;
 		loop_limit = 0;
 	}
-	
+
 	int loop_start_addr;
 	int loop_index;
 	int loop_increment;
@@ -49,6 +54,7 @@ public:
 		return true;
 	}
 };
+
 
 class ForthOS 
 {
@@ -97,6 +103,7 @@ class ForthOS
 		else
 			throw CString("out of bounds.");
 	}
+
 	void MemSet(int addr, int val)
 	{ 
 		if (addr < memorySize)
@@ -106,6 +113,7 @@ class ForthOS
 	}
 
 	int COMMA(int val);
+	void ForthOS::Compile(int num, ...);
 	int HERE() { return MemGet(HERE_ADDRESS); }
 	int LAST() { return MemGet(LAST_ADDRESS); }
 	int TICK(int name, bool& isImmediate);
@@ -128,14 +136,15 @@ class ForthOS
 
 	int Create(int name, int flags);
 	int EndWord();
-	void CommaCall(int addr) { COMMA(addr); }
+	void CommaCall(int addr) { COMMA(I_CALL);  COMMA(addr); }
 	void CommaLiteral(int val) { COMMA(I_LITERAL); COMMA(val); }
 
 	int ParseInput(LPCTSTR commands);
 	void AppendOutput(LPCTSTR text);
 	void Dump(CString& ret);
 	void DumpStack(CString& ret);
-	void DumpHelper(CString& ret1, CString& ret2, int val, bool pad);
+	int DumpInstr(int xt, CString& ret);
+	int DumpWord(int xt, CString& ret, int stopHere);
 	void Load();
 	void Save();
 	void BootStrap();

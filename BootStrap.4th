@@ -1,9 +1,9 @@
 HERE 999 ! LAST 998 !
-HERE (cw) ! LAST , 0 , 1 , ']'  , 1 STATE ! 1 STATE ! ;
-HERE (cw) ! LAST , 0 , 4 , '.' , 'b' , 's' , 'r' , ] 999 @ (HERE) ! 998 @ (LAST) ! ;
-HERE (cw) ! LAST , 0 , 9 , 'I' , 'M' , 'M' , 'E' , 'D' , 'I' , 'A' , 'T' , 'E' , ] 1 LAST 1 + ! ;
-HERE (cw) ! LAST , 0 , 2 , '?' , ']' , ] STATE @ ; 
-HERE (cw) ! LAST , 0 , 1 , '[' , ] 0 STATE ! ; IMMEDIATE
+HERE (cw) ! LAST , 0 , 1 , ']' , (cw) @ , 1 STATE ! 1 STATE ! ;
+HERE (cw) ! LAST , 0 , 4 , '.' , 'b' , 's' , 'r' , (cw) @ , ] 999 @ (HERE) ! 998 @ (LAST) ! ;
+HERE (cw) ! LAST , 0 , 9 , 'I' , 'M' , 'M' , 'E' , 'D' , 'I' , 'A' , 'T' , 'E' , (cw) @ , ] 1 LAST 1 + ! ;
+HERE (cw) ! LAST , 0 , 2 , '?' , ']' , (cw) @ , ] STATE @ ; 
+HERE (cw) ! LAST , 0 , 1 , '[' , (cw) @ , ] 0 STATE ! ; IMMEDIATE
 
 HERE (cw) ! LAST , 0 , 2 , 'S' , 'W' , ] HERE (cw) ! LAST , 0 , ; 
 
