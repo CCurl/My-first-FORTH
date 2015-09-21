@@ -4,7 +4,7 @@
 
 ForthOS::ForthOS(int memSize)
 {
-	SP = CSP = ISP = IP = RSP = 0;
+	SP = CSP = IP = RSP = 0;
 	memorySize = memSize;
 
 #ifdef _DEBUG
@@ -18,7 +18,6 @@ ForthOS::ForthOS(int memSize)
 	memset(memory, 0, memorySize * sizeof(int));
 	memset(stack, 0, STACK_SIZE * sizeof(int));
 	memset(cstack, 0, CSTACK_SIZE * sizeof(int));
-	memset(istack, 0, CSTACK_SIZE * sizeof(int));
 	memset(rstack, 0, RSTACK_SIZE * sizeof(int));
 }
 

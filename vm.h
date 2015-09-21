@@ -33,9 +33,9 @@ typedef enum {
 	I_NEQ,
 	I_LT,
 	I_GT, 
-	I_IF,
-	I_ELSE,
-	I_THEN,
+	I_TO_R, // >R
+	I_R_FROM, // R>
+	I_R_AT, // R@
 	I_IF_RT,
 	I_DO,
 	I_I,
@@ -47,8 +47,5 @@ typedef enum {
 	I_TYPE,
 	I_CALL, 
 	I_OVER,
-	I_TO_R, // >R
-	I_R_FROM, // R>
-	I_R_AT, // R@
 	I_RETURN = 99,
 } INSTR_T;

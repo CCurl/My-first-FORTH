@@ -77,9 +77,9 @@ SW 1 , ':' , (cw) @ , ] CREATE ] ;
 : /    ?] IF 13 , ELSE [ 13 , ] THEN ; IMMEDIATE
 : .    ?] IF 28 , ELSE [ 28 , ] THEN ; IMMEDIATE
 : TYPE ?] IF 29 , ELSE [ 29 , ] THEN ; IMMEDIATE
-: >R   ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
-: R>   ?] IF 33 , ELSE [ 33 , ] THEN ; IMMEDIATE
-: R@   ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE
+: >R   ?] IF 18 , ELSE [ 18 , ] THEN ; IMMEDIATE
+: R>   ?] IF 19 , ELSE [ 19 , ] THEN ; IMMEDIATE
+: R@   ?] IF 20 , ELSE [ 20 , ] THEN ; IMMEDIATE
 
 : VAR CREATE 3 , HERE 2 + , 99 , 0 , (cw) @ (LAST) ! ;
 : ALLOT 0 DO 0 , LOOP ;

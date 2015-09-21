@@ -86,11 +86,6 @@ class ForthOS
 	CStackEntry *CPUSH() { return (CSP < CSTACK_SIZE) ? &cstack[CSP++] : NULL; }
 	CStackEntry *CPOP() { return (CSP > 0) ? &cstack[--CSP] : NULL; }
 
-	// IF stack
-	int ISP, istack[CSTACK_SIZE];
-	int IPUSH(int val) { if (ISP < CSTACK_SIZE) istack[ISP++] = val; return val; }
-	int IPOP() { return (ISP > 0) ? istack[--ISP] : 0; }
-
 	// Return stack
 	int RSP, rstack[RSTACK_SIZE];
 	int RPUSH(int val) { if (RSP < RSTACK_SIZE) rstack[RSP++] = val; return val; }
