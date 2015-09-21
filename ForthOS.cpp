@@ -160,7 +160,7 @@ int ForthOS::DoExecute()
 		//case I_IF:
 		//	COMMA(I_IF_RT);
 		//	IPUSH(HERE());
-		//	COMMA(0); // Branches to ELSE or ENDIF if FALSE
+		//	COMMA(0); // Branches to ELSE or THEN if FALSE
 		//	break;
 
 		//case I_ELSE:
@@ -171,13 +171,13 @@ int ForthOS::DoExecute()
 		//	MemSet(addr, HERE());
 		//	break;
 
-		//case I_ENDIF:
+		//case I_THEN:
 		//	addr = IPOP();
 		//	MemSet(addr, HERE());
 		//	break;
 
 		case I_IF_RT:
-			// JUMP to ELSE or ENDIF if FALSE
+			// JUMP to ELSE or THEN if FALSE
 			addr = MemGet(IP++);
 			val = POP();
 			if (val == 0)
@@ -316,6 +316,20 @@ int ForthOS::DoExecute()
 			}
 			break;
 
+		case I_TO_R: // >R
+			RPUSH(POP());
+			break;
+
+		case I_R_FROM: // R>
+			PUSH(RPOP());
+			break;
+
+		case I_R_AT: // R@
+			val = RPOP();
+			PUSH(val);
+			RPUSH(val);
+			break;
+
 		default:
 			// Must be a user defined word
 		{
@@ -368,12 +382,12 @@ void ForthOS::BootStrap()
 	// Built-In VAR: (HERE)
 	Create(StringToMem(SOURCE_ADDRESS, _T("(HERE)")), FLAG_IS_NORMAL);
 	Compile(0,
-		I_LITERAL, HERE_ADDRESS, I_FETCH,
+		I_LITERAL, HERE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 
 	int xtHERE = Create(StringToMem(SOURCE_ADDRESS, _T("HERE")), FLAG_IS_NORMAL);
 	Compile(0,
-		I_LITERAL, HERE_ADDRESS, I_FETCH, 
+		I_LITERAL, HERE_ADDRESS, I_FETCH,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In VAR: STATE
@@ -503,8 +517,8 @@ void ForthOS::BootStrap()
 	//COMMA(0);
 	//MemSet(addr, HERE());
 
-	// Built-In WORD: ENDIF ( c-addr -- )
-	Create(StringToMem(SOURCE_ADDRESS, _T("ENDIF")), FLAG_IS_IMMEDIATE);
+	// Built-In WORD: THEN ( c-addr -- )
+	Create(StringToMem(SOURCE_ADDRESS, _T("THEN")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_CALL, xtHERE,
 		I_SWAP,
@@ -586,13 +600,13 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	//	ret.AppendFormat(_T(" (GOTO %d)"), addr);
 	//	break;
 
-	//case I_ENDIF:
-	//	ret.AppendFormat(_T("I_ENDIF"));
+	//case I_THEN:
+	//	ret.AppendFormat(_T("I_THEN"));
 	//	break;
 
 	case I_IF_RT:
 		ret.AppendFormat(_T("I_IF_RT"));
-		// JUMP to ELSE or ENDIF if FALSE
+		// JUMP to ELSE or THEN if FALSE
 		addr = MemGet(xt++);
 		ret.AppendFormat(_T(" (0 = IF GOTO %d)"), addr);
 		break;
@@ -674,6 +688,18 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_TYPE"));
 		break;
 
+	case I_TO_R:
+		ret.AppendFormat(_T("I_TO_R (>R)"));
+		break;
+
+	case I_R_FROM:
+		ret.AppendFormat(_T("I_R_FROM (R>)"));
+		break;
+
+	case I_R_AT:
+		ret.AppendFormat(_T("I_R_AT (R@)"));
+		break;
+
 	default:
 		// Must be a user defined word
 		ret.AppendFormat(_T(".INT %d"), instr);
@@ -732,7 +758,7 @@ void ForthOS::Dump(CString& ret)
 		if ((i%10 == 0) && (i > 0))
 			ret.Append(_T("\r\n"));
 	}
-	ret.Append(_T("\r\n"));
+	ret.Append(_T("\r\n\r\n"));
 
 	CString hdr, def;
 	int addr = MemGet(LAST_ADDRESS);
