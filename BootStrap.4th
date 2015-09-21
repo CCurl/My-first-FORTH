@@ -16,6 +16,7 @@ SW 4 , 'O' , 'V' , 'E' , 'R' , (cw) @ , ] ?] IF 31 , ELSE [ 31 , ] ENDIF ; IMMED
 
 SW 1 , '=' , (cw) @ , ] ?]       IF 14 , ELSE [ 14 , ] ENDIF ; IMMEDIATE
 SW 2 , '<' , '>' , (cw) @ , ] ?] IF 15 , ELSE [ 15 , ] ENDIF ; IMMEDIATE
+SW 1 , '>' , (cw) @ , ] ?]       IF 17 , ELSE [ 17 , ] ENDIF ; IMMEDIATE
 
 SW 2 , 'D' , 'O' , (cw) @ ,                   ] ?] IF 22 , ENDIF ; IMMEDIATE
 SW 1 , 'I' , (cw) @ ,                         ] ?] IF 23 , ENDIF ; IMMEDIATE
@@ -23,17 +24,24 @@ SW 5 , 'L' , 'E' , 'A' , 'V' , 'E' , (cw) @ , ] ?] IF 24 , ENDIF ; IMMEDIATE
 SW 4 , 'L' , 'O' , 'O' , 'P' , (cw) @ ,       ] ?] IF 25 , ENDIF ; IMMEDIATE
 SW 5 , '+' , 'L' , 'O' , 'O' , 'P' , (cw) @ , ] ?] IF 26 , ENDIF ; IMMEDIATE
 
+SW 5 , '(' , 'i' , 'n' , 'c' , ')' , (cw) @ , ] DUP @ 1+ OVER ! ;
+SW 6 , '.' , 'g' , 'e' , 't' , 'c' , 'h' , (cw) @ , ] >IN (inc) DROP SOURCE >IN @ + @ ;
+
 SW 2 , 'B' , 'L' , (cw) @ , ] 32 ;
 SW 3 , '.' , 's' , 's' , (cw) @ , ] 
-	SOURCE @ SOURCE 1+ + >IN @  
+	100 0
 	DO 
-		I @ BL <> 
-		IF I >IN ! LEAVE ENDIF 
+		SOURCE @ >IN @ > 
+		IF LEAVE 
+		ELSE
+			SOURCE >IN @ + @ BL =
+			IF
+				>IN (inc) DROP
+			ELSE
+				LEAVE
+			ENDIF
+		ENDIF
 	LOOP ;
-
-SW 5 , '(' , 'i' , 'n' , 'c' , ')' , (cw) @ , ] DUP @ 1+ OVER ! ;
-
-SW 6 , '.' , 'g' , 'e' , 't' , 'c' , 'h' , (cw) @ , ] >IN (inc) SOURCE >IN @ + @ ;
 
 SW 4 , 'I' , 'S' , 'W' , 'S' , (cw) @ , ] 
 		DUP 13 = IF DROP BL ENDIF
@@ -59,8 +67,9 @@ SW 6 , 'C' , 'R' , 'E' , 'A' , 'T' , 'E' , (cw) @ , ]
 	.wrd
 	HERE (cw) ! LAST , 0 , PAD @ ,
 	PAD COUNT 0
-	DO , LOOP 
-	PAD @ ,
+	DO DUP @ , 1+ LOOP 
+	(cw) @ ,
+	DROP
 	;
 
 SW 1 , ':' , (cw) @ , ] CREATE ] ;

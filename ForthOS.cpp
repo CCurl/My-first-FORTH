@@ -744,7 +744,7 @@ void ForthOS::Dump(CString& ret)
 		int prev = MemGet(addr++);
 		int imm = MemGet(addr++);
 		int len = MemGet(addr++);
-		def.AppendFormat(_T("%04d %s (%d) "), prev, imm ? _T("(immediate)") : _T(""), len);
+		def.AppendFormat(_T("%04d %s (%d) "), prev, imm ? _T("(immediate)") : _T("0"), len);
 		for (int i = 0; i < len; i++)
 		{
 			int c = MemGet(addr++);
@@ -922,32 +922,33 @@ int ForthOS::GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name)
 	int len = 0;
 	MemSet(copyTo, len);
 	name.Empty();
+	int addr = SOURCE_ADDRESS + toIN;
 
 	// Skip leading whitespace
-	while ((toIN <= stopAddr) && iswspace(MemGet(toIN)) )
+	while ((addr <= stopAddr) && iswspace(MemGet(addr)))
 	{
-		toIN++;
+		addr = SOURCE_ADDRESS + (++toIN);
 	}
 
-	if (toIN > stopAddr)
+	if (addr > stopAddr)
 	{
 		return copyTo;
 	}
 
 	CHAR match = 0;
-	CHAR c = MemGet(toIN);
+	CHAR c = MemGet(addr);
 	if ((c == '\'') || (c == '\"'))
 	{
-		++toIN;
+		addr = SOURCE_ADDRESS + (++toIN);
 		match = c;
 		MemSet(copyTo, ++len);
 		MemSet(copyTo + len, c);
 		name.AppendChar(c);
 	}
 
-	while (toIN <= stopAddr)
+	while (addr <= stopAddr)
 	{
-		c = MemGet(toIN);
+		c = MemGet(addr);
 		bool addIt = (!iswspace(c)) || (match != 0);
 		if ((match != 0) && (c == match))
 		{
@@ -955,7 +956,7 @@ int ForthOS::GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name)
 		}
 		if (addIt)
 		{
-			++toIN;
+			addr = SOURCE_ADDRESS + (++toIN);
 			MemSet(copyTo, ++len);
 			MemSet(copyTo + len, c);
 			name.AppendChar(c);
@@ -993,13 +994,15 @@ int ForthOS::ParseInput(LPCTSTR commands)
 	}
 
 	StringToMem(SOURCE_ADDRESS, inputStream);
-	int toIN = SOURCE_ADDRESS; // >IN
+
+	int toIN = 0; // >IN
 	MemSet(TOIN_ADDRESS, ++toIN);
 
 	int inputEnd = SOURCE_ADDRESS + MemGet(SOURCE_ADDRESS);
 	int tmpBuf = inputEnd + 2;
+	int addr = SOURCE_ADDRESS + toIN;
 
-	while (toIN <= inputEnd)
+	while (addr <= inputEnd)
 	{
 		GetNextWord(toIN, inputEnd, tmpBuf, name);
 		MemSet(TOIN_ADDRESS, toIN);
@@ -1027,11 +1030,9 @@ int ForthOS::ParseInput(LPCTSTR commands)
 				CSP = 0;
 				MemSet(STATE_ADDRESS, 0);
 			}
-			int new_toIN = MemGet(TOIN_ADDRESS);
-			//if (new_toIN != toIN)
-			//	int xxx = 1;
-			toIN = new_toIN;
+			toIN = MemGet(TOIN_ADDRESS);
 		}
+		addr = SOURCE_ADDRESS + toIN;
 	}
 
 	// at end of the inputStream
