@@ -47,5 +47,7 @@ typedef enum {
 	I_TYPE,
 	I_CALL, 
 	I_OVER,
+	I_TORSTACK, // >R
+	I_RSTACKTO, // R>
 	I_RETURN = 99,
 } INSTR_T;

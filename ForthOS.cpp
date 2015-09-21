@@ -157,24 +157,24 @@ int ForthOS::DoExecute()
 			PUSH(val);
 			break;
 
-		case I_IF:
-			COMMA(I_IF_RT);
-			IPUSH(HERE());
-			COMMA(0); // Branches to ELSE or ENDIF if FALSE
-			break;
+		//case I_IF:
+		//	COMMA(I_IF_RT);
+		//	IPUSH(HERE());
+		//	COMMA(0); // Branches to ELSE or ENDIF if FALSE
+		//	break;
 
-		case I_ELSE:
-			addr = IPOP();
-			COMMA(I_GOTO);
-			IPUSH(HERE());
-			COMMA(0);
-			MemSet(addr, HERE());
-			break;
+		//case I_ELSE:
+		//	addr = IPOP();
+		//	COMMA(I_GOTO);
+		//	IPUSH(HERE());
+		//	COMMA(0);
+		//	MemSet(addr, HERE());
+		//	break;
 
-		case I_ENDIF:
-			addr = IPOP();
-			MemSet(addr, HERE());
-			break;
+		//case I_ENDIF:
+		//	addr = IPOP();
+		//	MemSet(addr, HERE());
+		//	break;
 
 		case I_IF_RT:
 			// JUMP to ELSE or ENDIF if FALSE
@@ -394,6 +394,13 @@ void ForthOS::BootStrap()
 		I_LITERAL, TOIN_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 
+	// Built-In WORD: >IN
+	Create(StringToMem(SOURCE_ADDRESS, _T("PAD")), FLAG_IS_NORMAL);
+	Compile(0,
+		// I_CALL, xtHERE, I_LITERAL, 10, I_PLUS,
+		I_LITERAL, PAD_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
+
 	// Built-In WORD: BASE
 	Create(StringToMem(SOURCE_ADDRESS, _T("BASE")), FLAG_IS_NORMAL);
 	Compile(0,
@@ -471,26 +478,55 @@ void ForthOS::BootStrap()
 	// Check the STATE; if interpreting, 
 	Create(StringToMem(SOURCE_ADDRESS, _T("IF")), FLAG_IS_IMMEDIATE);
 	Compile(0,
-		I_LITERAL, I_IF,
+		I_LITERAL, I_IF_RT,
+		I_CALL, xtComma,
+		I_CALL, xtHERE,
+		I_LITERAL, 0,
 		I_CALL, xtComma,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: ELSE ( c-addr -- c-addr )
 	Create(StringToMem(SOURCE_ADDRESS, _T("ELSE")), FLAG_IS_IMMEDIATE);
 	Compile(0,
-		I_LITERAL, I_ELSE,
+		I_LITERAL, I_GOTO,
 		I_CALL, xtComma,
+		I_CALL, xtHERE,
+		I_LITERAL, 0,
+		I_CALL, xtComma,
+		I_CALL, xtHERE,
+		I_ROT,
+		I_STORE,
 		I_RETURN, COMPILE_BREAK);
+	//addr = IPOP();
+	//COMMA(I_GOTO);
+	//IPUSH(HERE());
+	//COMMA(0);
+	//MemSet(addr, HERE());
 
 	// Built-In WORD: ENDIF ( c-addr -- )
 	Create(StringToMem(SOURCE_ADDRESS, _T("ENDIF")), FLAG_IS_IMMEDIATE);
 	Compile(0,
-		I_LITERAL, I_ENDIF,
-		I_CALL, xtComma,
+		I_CALL, xtHERE,
+		I_SWAP,
+		I_STORE,
 		I_RETURN, COMPILE_BREAK);
 
 	PUSH(99999);
 	EXECUTE(xtComma);
+}
+
+void ForthOS::ResolveCall(CString& ret, int addr)
+{
+	ret.Append(_T(" ("));
+	CString tmp;
+	addr = MemGet(addr - 1) + 2;
+	int len = MemGet(addr++);
+	for (int i = 0; i < len; i++)
+	{
+		CHAR c = MemGet(addr++);
+		ret.AppendChar(c);
+	}
+	ret.Append(_T(")"));
 }
 
 int ForthOS::DumpInstr(int xt, CString& ret)
@@ -504,6 +540,7 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	case I_CALL:
 		addr = MemGet(xt++);
 		ret.AppendFormat(_T("I_CALL %04d"), addr);
+		ResolveCall(ret, addr);
 		break;
 
 	case I_RETURN:
@@ -524,7 +561,7 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		break;
 
 	case I_DROP:
-		ret.Format(_T("I_DROP"));
+		ret.AppendFormat(_T("I_DROP"));
 		break;
 
 	case I_SWAP:
@@ -539,19 +576,19 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_ROT"));
 		break;
 
-	case I_IF:
-		ret.AppendFormat(_T("I_IF"));
-		break;
+	//case I_IF:
+	//	ret.AppendFormat(_T("I_IF"));
+	//	break;
 
-	case I_ELSE:
-		ret.AppendFormat(_T("I_ELSE"));
-		addr = MemGet(xt++);
-		ret.AppendFormat(_T(" (GOTO %d)"), addr);
-		break;
+	//case I_ELSE:
+	//	ret.AppendFormat(_T("I_ELSE"));
+	//	addr = MemGet(xt++);
+	//	ret.AppendFormat(_T(" (GOTO %d)"), addr);
+	//	break;
 
-	case I_ENDIF:
-		ret.AppendFormat(_T("I_ENDIF"));
-		break;
+	//case I_ENDIF:
+	//	ret.AppendFormat(_T("I_ENDIF"));
+	//	break;
 
 	case I_IF_RT:
 		ret.AppendFormat(_T("I_IF_RT"));

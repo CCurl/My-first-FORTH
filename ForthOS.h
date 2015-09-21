@@ -12,6 +12,7 @@
 #define BASE_ADDRESS 5
 
 #define TOIN_ADDRESS 9 // >IN
+#define PAD_ADDRESS 950 // PAD
 #define SOURCE_ADDRESS 10 // the "input buffer"
 #define CORE_SIZE 2500
 #define CORE_START (memorySize - CORE_SIZE)
@@ -145,6 +146,7 @@ class ForthOS
 	void DumpStack(CString& ret);
 	int DumpInstr(int xt, CString& ret);
 	int DumpWord(int xt, CString& ret, int stopHere);
+	void ResolveCall(CString& ret, int addr);
 	void Load();
 	void Save();
 	void BootStrap();
