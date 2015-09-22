@@ -71,10 +71,12 @@ SW 6 , 'C' , 'R' , 'E' , 'A' , 'T' , 'E' , (cw) @ , ]
 
 SW 1 , ':' , (cw) @ , ] CREATE ] ;
 
+: PICK ?] IF  7 , ELSE [  7 , ] THEN ; IMMEDIATE
 : ROT  ?] IF  8 , ELSE [  8 , ] THEN ; IMMEDIATE
 : -    ?] IF 11 , ELSE [ 11 , ] THEN ; IMMEDIATE
 : *    ?] IF 12 , ELSE [ 12 , ] THEN ; IMMEDIATE
 : /    ?] IF 13 , ELSE [ 13 , ] THEN ; IMMEDIATE
+: <>   ?] IF 15 , ELSE [ 15 , ] THEN ; IMMEDIATE
 : .    ?] IF 28 , ELSE [ 28 , ] THEN ; IMMEDIATE
 : TYPE ?] IF 29 , ELSE [ 29 , ] THEN ; IMMEDIATE
 : >R   ?] IF 18 , ELSE [ 18 , ] THEN ; IMMEDIATE
@@ -90,3 +92,54 @@ VAR .ct
 : CTYPE .ct ! .ct 1 TYPE ;
 : .BL BL CTYPE ;
 : .CR 13 CTYPE 10 CTYPE ;
+
+: str+ (inc) DUP @ + ! ;
+: strclr 0 OVER ! ;
+
+: 2DUP OVER OVER ;
+: ?DUP DUP IF DUP THEN ;
+
+: strcat SWAP COUNT 0 DO
+		DUP @ 2 PICK str+ 1+
+	LOOP DROP
+	;
+	
+: strcpy strclr strcat ;
+	
+: strcmp 2DUP @ SWAP @ =
+	IF
+		-1 >R
+		1+ SWAP COUNT 0 
+		DO
+			2DUP @ SWAP @ <>
+			IF 
+				R> DROP 0 >R LEAVE 
+			ELSE
+				1+ SWAP 1+
+			THEN
+		LOOP
+		DROP DROP R>
+	ELSE
+		DROP DROP
+		0
+	THEN ;
+
+: >XT 2 + COUNT + 1+ ;
+: XT> 1 - @ ;
+: >NAME 2 + ;
+: NAME> 2 - ;
+: XT>NAME XT> >NAME ;
+
+
+: FIND-WORD LAST 
+	10000 0 DO
+		2DUP >NAME strcmp
+		IF SWAP DROP LEAVE 
+		ELSE DUP 0 =
+			IF DROP DROP 0 LEAVE ELSE @ THEN
+		THEN
+	LOOP ;
+
+: FW .wrd PAD FIND-WORD ;
+: ' FW DUP IF >XT THEN ;
+: EXECUTE ?DUP IF >R THEN ;

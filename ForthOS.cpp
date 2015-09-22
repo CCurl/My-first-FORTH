@@ -367,6 +367,10 @@ void ForthOS::BootStrap()
 	MemSet(BASE_ADDRESS, 10); // Decimal
 
 	COMMA(0); // End of word chain
+	COMMA(0); // FLAGS
+	COMMA(0); // LEN
+	COMMA(1000); // BACK-PTR
+	COMMA(I_RETURN); // BACK-PTR
 
 	// Built-In WORD: , ( n -- )
 	// : , (HERE) @ SWAP OVER ! 1+ (HERE) ! ;
@@ -962,7 +966,18 @@ int ForthOS::GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name)
 
 	CHAR match = 0;
 	CHAR c = MemGet(addr);
-	if ((c == '\'') || (c == '\"'))
+	if (c == '\'') 
+	{
+		int a1 = addr + 2;
+		if ((a1 <= stopAddr) && (MemGet(a1) == '\''))
+		{
+			toIN += 3;
+			name.Format(_T("'%c'"), (CHAR)MemGet(addr + 1));
+			StringToMem(copyTo, name);
+			return copyTo;
+		}
+	}
+	else if (c == '\"')
 	{
 		addr = SOURCE_ADDRESS + (++toIN);
 		match = c;
