@@ -10,10 +10,13 @@
 #define STATE_ADDRESS 3
 #define CUR_WORD 4
 #define BASE_ADDRESS 5
+#define SOURCE_ADDRESS 6 // Points to the current input buffer
+#define TOIN_ADDRESS 7 // >IN
 
-#define TOIN_ADDRESS 9 // >IN
 #define PAD_ADDRESS 950 // PAD
-#define SOURCE_ADDRESS 10 // the "input buffer"
+#define INPUT_BUFFER 21 // typed commands go here
+#define FILE_BUFFER 600 // commands read from file go here
+
 #define CORE_SIZE 2500
 #define CORE_START (memorySize - CORE_SIZE)
 #define DICT_START 1000
@@ -128,7 +131,8 @@ class ForthOS
 		MemSet(addr, len);
 		return addr + len;
 	}
-	int GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name);
+	int GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name);
+	int GetNextWord(int PAD);
 
 	int Create(int name, int flags);
 	int EndWord();
@@ -148,6 +152,6 @@ class ForthOS
 	void BootStrap_FILE();
 
 	int EXECUTE(int xt);
-	void ExecuteWord(int startAddr, CString& name);
+	void ExecuteWord(int startAddr);
 	void FormatNumber(int base, int num, CString& x);
 };

@@ -10,6 +10,7 @@ ForthOS::ForthOS(int memSize)
 #ifdef _DEBUG
 	memSize = MEMORY_SIZE;
 	memory = dataSpace;
+	memset(dataSpace, 0, memSize * sizeof(int));
 #else
 	memory = new int[memorySize];
 	memset(memory, 0, memorySize * sizeof(int));
@@ -365,6 +366,7 @@ void ForthOS::BootStrap()
 	MemSet(HERE_ADDRESS, DICT_START);
 	MemSet(LAST_ADDRESS, MemGet(HERE_ADDRESS));
 	MemSet(BASE_ADDRESS, 10); // Decimal
+	MemSet(SOURCE_ADDRESS, INPUT_BUFFER);
 
 	COMMA(0); // End of word chain
 	COMMA(0); // FLAGS
@@ -374,7 +376,7 @@ void ForthOS::BootStrap()
 
 	// Built-In WORD: , ( n -- )
 	// : , (HERE) @ SWAP OVER ! 1+ (HERE) ! ;
-	xtComma = Create(StringToMem(SOURCE_ADDRESS, _T(",")), FLAG_IS_NORMAL);
+	xtComma = Create(StringToMem(INPUT_BUFFER, _T(",")), FLAG_IS_NORMAL);
 	Compile(0, 
 		I_LITERAL, HERE_ADDRESS, I_FETCH, 
 		I_SWAP, I_OVER, I_STORE,
@@ -383,50 +385,49 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In VAR: (HERE)
-	Create(StringToMem(SOURCE_ADDRESS, _T("(HERE)")), FLAG_IS_NORMAL);
+	Create(StringToMem(INPUT_BUFFER, _T("(HERE)")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, HERE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 
-	int xtHERE = Create(StringToMem(SOURCE_ADDRESS, _T("HERE")), FLAG_IS_NORMAL);
+	int xtHERE = Create(StringToMem(INPUT_BUFFER, _T("HERE")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, HERE_ADDRESS, I_FETCH,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In VAR: STATE
-	Create(StringToMem(SOURCE_ADDRESS, _T("STATE")), FLAG_IS_NORMAL);
+	Create(StringToMem(INPUT_BUFFER, _T("STATE")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, STATE_ADDRESS, 
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: SOURCE
-	Create(StringToMem(SOURCE_ADDRESS, _T("SOURCE")), FLAG_IS_NORMAL);
+	Create(StringToMem(INPUT_BUFFER, _T("TIB")), FLAG_IS_NORMAL);
 	Compile(0,
-		I_LITERAL, SOURCE_ADDRESS,
+		I_LITERAL, INPUT_BUFFER,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: >IN
-	Create(StringToMem(SOURCE_ADDRESS, _T(">IN")), FLAG_IS_NORMAL);
+	Create(StringToMem(INPUT_BUFFER, _T(">IN")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, TOIN_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 
-	// Built-In WORD: >IN
-	Create(StringToMem(SOURCE_ADDRESS, _T("PAD")), FLAG_IS_NORMAL);
+	// Built-In WORD: PAD
+	Create(StringToMem(INPUT_BUFFER, _T("PAD")), FLAG_IS_NORMAL);
 	Compile(0,
-		// I_CALL, xtHERE, I_LITERAL, 10, I_PLUS,
-		I_LITERAL, PAD_ADDRESS,
+		I_CALL, xtHERE, I_LITERAL, 100, I_PLUS,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: BASE
-	Create(StringToMem(SOURCE_ADDRESS, _T("BASE")), FLAG_IS_NORMAL);
+	Create(StringToMem(INPUT_BUFFER, _T("BASE")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, BASE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: @ (I_FETCH)
 	// : <BUILDS I_FETCH , DOES> I_FETCH ; IMMEDIATE
-	int xtFetch = Create(StringToMem(SOURCE_ADDRESS, _T("@")), FLAG_IS_IMMEDIATE);
+	int xtFetch = Create(StringToMem(INPUT_BUFFER, _T("@")), FLAG_IS_IMMEDIATE);
 	// STATE @ 1 = IF ELSE THEN ;
 	Compile(0,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
@@ -439,7 +440,7 @@ void ForthOS::BootStrap()
 
 	// Built-In WORD: ! (STORE)
 	// : ! <BUILDS STORE , DOES> STORE ; IMMEDIATE
-	int xtSTORE = Create(StringToMem(SOURCE_ADDRESS, _T("!")), FLAG_IS_IMMEDIATE);
+	int xtSTORE = Create(StringToMem(INPUT_BUFFER, _T("!")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
 		I_IF_RT, HERE() + 11,
@@ -451,7 +452,7 @@ void ForthOS::BootStrap()
 
 	// Built-In WORD: +
 	// : ! <BUILDS STORE , DOES> STORE ; IMMEDIATE
-	int xtPLUS = Create(StringToMem(SOURCE_ADDRESS, _T("+")), FLAG_IS_IMMEDIATE);
+	int xtPLUS = Create(StringToMem(INPUT_BUFFER, _T("+")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
 		I_IF_RT, HERE() + 11,
@@ -462,27 +463,33 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: (LAST)
-	int xtLastVar = Create(StringToMem(SOURCE_ADDRESS, _T("(LAST)")), FLAG_IS_NORMAL);
+	int xtLastVar = Create(StringToMem(INPUT_BUFFER, _T("(LAST)")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, LAST_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: LAST
 	// : LAST (LAST) @ ;
-	int xtLAST = Create(StringToMem(SOURCE_ADDRESS, _T("LAST")), FLAG_IS_NORMAL);
+	int xtLAST = Create(StringToMem(INPUT_BUFFER, _T("LAST")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, LAST_ADDRESS, I_FETCH,
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In VAR: (cw)
-	Create(StringToMem(SOURCE_ADDRESS, _T("(cw)")), FLAG_IS_NORMAL);
+	Create(StringToMem(INPUT_BUFFER, _T("(cw)")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, CUR_WORD,
 		I_RETURN, COMPILE_BREAK);
 
+	// Built-In VAR: (src)
+	Create(StringToMem(INPUT_BUFFER, _T("(source)")), FLAG_IS_NORMAL);
+	Compile(0,
+		I_LITERAL, SOURCE_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
+
 	// Built-In WORD: ; (END-WORD)
 	// : ; <I_RETURN> , (cw) @ (LAST) ! 0 STATE ! ; IMMEDIATE
-	int addrSemiColon = Create(StringToMem(SOURCE_ADDRESS, _T(";")), FLAG_IS_IMMEDIATE);
+	int addrSemiColon = Create(StringToMem(INPUT_BUFFER, _T(";")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_LITERAL, I_RETURN, 
 		I_CALL, xtComma,
@@ -493,7 +500,7 @@ void ForthOS::BootStrap()
 
 	// Built-In WORD: IF ( -- c-addr )
 	// Check the STATE; if interpreting, 
-	Create(StringToMem(SOURCE_ADDRESS, _T("IF")), FLAG_IS_IMMEDIATE);
+	Create(StringToMem(INPUT_BUFFER, _T("IF")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_LITERAL, I_IF_RT,
 		I_CALL, xtComma,
@@ -503,7 +510,7 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 
 	// Built-In WORD: ELSE ( c-addr -- c-addr )
-	Create(StringToMem(SOURCE_ADDRESS, _T("ELSE")), FLAG_IS_IMMEDIATE);
+	Create(StringToMem(INPUT_BUFFER, _T("ELSE")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_LITERAL, I_GOTO,
 		I_CALL, xtComma,
@@ -514,14 +521,9 @@ void ForthOS::BootStrap()
 		I_ROT,
 		I_STORE,
 		I_RETURN, COMPILE_BREAK);
-	//addr = IPOP();
-	//COMMA(I_GOTO);
-	//IPUSH(HERE());
-	//COMMA(0);
-	//MemSet(addr, HERE());
 
 	// Built-In WORD: THEN ( c-addr -- )
-	Create(StringToMem(SOURCE_ADDRESS, _T("THEN")), FLAG_IS_IMMEDIATE);
+	Create(StringToMem(INPUT_BUFFER, _T("THEN")), FLAG_IS_IMMEDIATE);
 	Compile(0,
 		I_CALL, xtHERE,
 		I_SWAP,
@@ -946,17 +948,66 @@ int ForthOS::MemToString(int addr, CString& val)
 	return len;
 }
 
-int ForthOS::GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name)
+int ForthOS::GetNextWord(int PAD)
+{
+	int toIN = MemGet(TOIN_ADDRESS);
+	int source = MemGet(SOURCE_ADDRESS);
+	int len = MemGet(source++);
+	CHAR c;
+
+	// 0 PAD !
+	MemSet(PAD, 0);
+
+	// Skip leading whitespace
+	while (toIN < len)
+	{
+		c = MemGet(source + toIN);
+		if (iswspace(c))
+		{
+			MemSet(TOIN_ADDRESS, ++toIN);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	// Go until the next whitespace or the end of the line
+	while (toIN < len)
+	{
+		// (source) @ 1+ >IN @ + @ .is-whitespace
+		// IF LEAVE 
+		c = MemGet(source + toIN);
+		if (iswspace(c))
+		{
+			break;
+		}
+		else
+		{
+			// ELSE PAD @ 1+ SWAP ! PAD DUP @ + !
+			MemSet(PAD, MemGet(PAD) + 1);
+			MemSet(PAD + MemGet(PAD), c);
+
+			// >IN @ 1+ >IN !
+			MemSet(TOIN_ADDRESS, ++toIN);
+		}
+		//THEN
+	}
+	return PAD;
+}
+
+// ( addr len -- 
+int ForthOS::GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name)
 {
 	int len = 0;
 	MemSet(copyTo, len);
 	name.Empty();
-	int addr = SOURCE_ADDRESS + toIN;
+	int addr = MemGet(SOURCE_ADDRESS) + toIN;
 
 	// Skip leading whitespace
 	while ((addr <= stopAddr) && iswspace(MemGet(addr)))
 	{
-		addr = SOURCE_ADDRESS + (++toIN);
+		addr = MemGet(SOURCE_ADDRESS) + (++toIN);
 	}
 
 	if (addr > stopAddr)
@@ -979,7 +1030,7 @@ int ForthOS::GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name)
 	}
 	else if (c == '\"')
 	{
-		addr = SOURCE_ADDRESS + (++toIN);
+		addr = MemGet(SOURCE_ADDRESS) + (++toIN);
 		match = c;
 		MemSet(copyTo, ++len);
 		MemSet(copyTo + len, c);
@@ -996,7 +1047,7 @@ int ForthOS::GetNextWord(int& toIN, int stopAddr, int copyTo, CString& name)
 		}
 		if (addIt)
 		{
-			addr = SOURCE_ADDRESS + (++toIN);
+			addr = MemGet(SOURCE_ADDRESS) + (++toIN);
 			MemSet(copyTo, ++len);
 			MemSet(copyTo + len, c);
 			name.AppendChar(c);
@@ -1033,46 +1084,42 @@ int ForthOS::ParseInput(LPCTSTR commands)
 		return 0;
 	}
 
-	StringToMem(SOURCE_ADDRESS, inputStream);
+	int source = StringToMem(MemGet(SOURCE_ADDRESS), inputStream);
 
-	int toIN = 0; // >IN
-	MemSet(TOIN_ADDRESS, ++toIN);
+	// 0 >IN !
+	int toIN = 0; 
+	MemSet(TOIN_ADDRESS, toIN);
 
-	int inputEnd = SOURCE_ADDRESS + MemGet(SOURCE_ADDRESS);
-	int tmpBuf = inputEnd + 2;
-	int addr = SOURCE_ADDRESS + toIN;
+	int len = MemGet(source++);
+	int PAD = source + len + 10;
+	//int addr = source + toIN;
+	int err = false;
 
-	while (addr <= inputEnd)
+	try
 	{
-		GetNextWord(toIN, inputEnd, tmpBuf, name);
-		MemSet(TOIN_ADDRESS, toIN);
-		if (!name.IsEmpty())
+		while (toIN < len)
 		{
-			int err = false;
-			try
-			{
-				ExecuteWord(tmpBuf, name);
-			}
-			catch (CString msg)
-			{
-				err = true;
-				AppendOutput(msg);
-			}
-			catch (...)
-			{
-				err = true;
-			}
-
-			if (err)
-			{
-				SP = 0;
-				RSP = 0;
-				CSP = 0;
-				MemSet(STATE_ADDRESS, 0);
-			}
+			GetNextWord(PAD);
+			ExecuteWord(PAD);
 			toIN = MemGet(TOIN_ADDRESS);
 		}
-		addr = SOURCE_ADDRESS + toIN;
+	}
+	catch (CString msg)
+	{
+		err = true;
+		AppendOutput(msg);
+	}
+	catch (...)
+	{
+		err = true;
+	}
+
+	if (err)
+	{
+		SP = 0;
+		RSP = 0;
+		CSP = 0;
+		MemSet(STATE_ADDRESS, 0);
 	}
 
 	// at end of the inputStream
@@ -1095,7 +1142,15 @@ void ForthOS::BootStrap_FILE()
 		while (fgets(buf, sizeof(buf), fp) == buf)
 		{
 			cmds = buf;
-			ParseInput(cmds);
+			cmds.TrimRight();
+			if (cmds.CompareNoCase(_T("break;")) == 0)
+			{
+				break;
+			}
+			else
+			{
+				ParseInput(cmds);
+			}
 		}
 		fclose(fp);
 	}
@@ -1138,13 +1193,16 @@ void ForthOS::Save()
 }
 
 // Primitives
-void ForthOS::ExecuteWord(int startAddr, CString& name)
+void ForthOS::ExecuteWord(int PAD)
 {
-	if (MemGet(startAddr) == 0)
+	CString name;
+	MemToString(PAD, name);
+
+	if (MemGet(PAD) == 0)
 		return;
 
 	bool isImmediate = false;
-	int xt = TICK(startAddr, isImmediate);
+	int xt = TICK(PAD, isImmediate);
 
 	if (xt != 0)
 	{
@@ -1181,7 +1239,7 @@ void ForthOS::ExecuteWord(int startAddr, CString& name)
 		return;
 	}
 
-	if (StringIsChar(startAddr, num))
+	if (StringIsChar(PAD, num))
 	{
 		if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
 		{
@@ -1194,10 +1252,10 @@ void ForthOS::ExecuteWord(int startAddr, CString& name)
 		return;
 	}
 
-	if (StringIsString(startAddr))
+	if (StringIsString(PAD))
 	{
-		int len = MemGet(startAddr++) - 2;
-		MemSet(startAddr, len);
+		int len = MemGet(PAD++) - 2;
+		MemSet(PAD, len);
 		//throw CString("quoted string not implemented.");
 		if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
 		{
@@ -1208,7 +1266,7 @@ void ForthOS::ExecuteWord(int startAddr, CString& name)
 			COMMA(len);
 			for (int i = 1; i <= len; i++)
 			{
-				COMMA(MemGet(startAddr + i));
+				COMMA(MemGet(PAD + i));
 			}
 		}
 		else
