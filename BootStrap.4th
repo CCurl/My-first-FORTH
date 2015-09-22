@@ -71,6 +71,10 @@ SW 6 , 'C' , 'R' , 'E' , 'A' , 'T' , 'E' , (cw) @ , ]
 
 SW 1 , ':' , (cw) @ , ] CREATE ] ;
 
+: SOURCE SOURCE COUNT ;
+
+: ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 2 + >IN ! LEAVE THEN LOOP ; IMMEDIATE
+
 : PICK ?] IF  7 , ELSE [  7 , ] THEN ; IMMEDIATE
 : ROT  ?] IF  8 , ELSE [  8 , ] THEN ; IMMEDIATE
 : -    ?] IF 11 , ELSE [ 11 , ] THEN ; IMMEDIATE
@@ -93,20 +97,20 @@ VAR .ct
 : .BL BL CTYPE ;
 : .CR 13 CTYPE 10 CTYPE ;
 
-: str+ (inc) DUP @ + ! ;
-: strclr 0 OVER ! ;
+: str+ ( addr -- addr ) (inc) DUP @ + ! ;
+: strclr ( addr -- addr ) 0 OVER ! ;
 
 : 2DUP OVER OVER ;
 : ?DUP DUP IF DUP THEN ;
 
-: strcat SWAP COUNT 0 DO
+: strcat ( addr -- addr ) SWAP COUNT 0 DO
 		DUP @ 2 PICK str+ 1+
 	LOOP DROP
 	;
 	
-: strcpy strclr strcat ;
+: strcpy ( addr -- addr ) strclr strcat ;
 	
-: strcmp 2DUP @ SWAP @ =
+: strcmp ( addr1 addr2 -- bool ) 2DUP @ SWAP @ =
 	IF
 		-1 >R
 		1+ SWAP COUNT 0 
@@ -131,7 +135,7 @@ VAR .ct
 : XT>NAME XT> >NAME ;
 
 
-: FIND-WORD LAST 
+: FIND-WORD ( addr1 -- word-addr|0 ) LAST 
 	10000 0 DO
 		2DUP >NAME strcmp
 		IF SWAP DROP LEAVE 
