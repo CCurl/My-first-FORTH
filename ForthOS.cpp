@@ -12,10 +12,10 @@ ForthOS::ForthOS(int memSize)
 	memory = dataSpace;
 #else
 	memory = new int[memorySize];
+	memset(memory, 0, memorySize * sizeof(int));
 #endif
 
 	userMode = true;
-	memset(memory, 0, memorySize * sizeof(int));
 	memset(stack, 0, STACK_SIZE * sizeof(int));
 	memset(cstack, 0, CSTACK_SIZE * sizeof(int));
 	memset(rstack, 0, RSTACK_SIZE * sizeof(int));
