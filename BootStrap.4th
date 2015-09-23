@@ -12,6 +12,7 @@ SW 4 , 'S' , 'W' , 'A' , 'P' , (cw) @ , ] ?] IF  5 , ELSE [  5 , ] THEN ; IMMEDI
 SW 4 , 'D' , 'R' , 'O' , 'P' , (cw) @ , ] ?] IF  6 , ELSE [  6 , ] THEN ; IMMEDIATE
 SW 2 , '1' , '+' ,             (cw) @ , ] ?] IF  9 , ELSE [  9 , ] THEN ; IMMEDIATE
 SW 1 , '=' ,                   (cw) @ , ] ?] IF 14 , ELSE [ 14 , ] THEN ; IMMEDIATE
+SW 1 , '<' ,                   (cw) @ , ] ?] IF 16 , ELSE [ 16 , ] THEN ; IMMEDIATE
 SW 1 , '>' ,                   (cw) @ , ] ?] IF 17 , ELSE [ 17 , ] THEN ; IMMEDIATE
 SW 2 , '>' , 'R' ,             (cw) @ , ] ?] IF 18 , ELSE [ 18 , ] THEN ; IMMEDIATE
 SW 2 , 'R' , '>' ,             (cw) @ , ] ?] IF 19 , ELSE [ 19 , ] THEN ; IMMEDIATE
@@ -82,6 +83,7 @@ SW 1 , ':' , (cw) @ , ] CREATE ] ;
 : EMIT ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
 
 : ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 2+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
+( : ." SOURCE >IN @ DO DUP I + @ '"' = IF DROP I 2+ >IN ! LEAVE ELSE DUP I + @ EMIT THEN LOOP ; IMMEDIATE )
 : VAR CREATE 3 , HERE 2+ , 99 , 0 , (cw) @ (LAST) ! ;
 : ALLOT 0 DO 0 , LOOP ;
 
@@ -158,4 +160,13 @@ SW 1 , ':' , (cw) @ , ] CREATE ] ;
 : FILL ( addr n b -- ) ROT ROT OVER + SWAP DO DUP I ! LOOP DROP ;
 : ERASE ( addr n -- ) 0 FILL ;
 
+: BEGIN ?] IF HERE   THEN ; IMMEDIATE
+: EXIT  ?] IF 99 ,   THEN ; IMMEDIATE
+: AGAIN ?] IF 27 , , THEN ; IMMEDIATE
+
+: :NONAME ( -- code-addr ) HERE ] ;
+: NONAME; ?] IF 99 , 0 STATE ! THEN ; IMMEDIATE
+( Usage: :NONAME 1 2 3 + + . NONAME; )
+
 : .fl LAST (HERE) ! LAST @ (LAST) ! ;
+
