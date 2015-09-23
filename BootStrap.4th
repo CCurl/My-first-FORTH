@@ -70,12 +70,7 @@ SW 6 , 'C' , 'R' , 'E' , 'A' , 'T' , 'E' , (cw) @ , ]
 	(cw) @ ,
 	;
 
-999 CREATE abc ] 777 ; 888
-
 SW 1 , ':' , (cw) @ , ] CREATE ] ;
-
-
-: ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 2 + >IN ! LEAVE THEN LOOP ; IMMEDIATE
 
 : PICK ?] IF  7 , ELSE [  7 , ] THEN ; IMMEDIATE
 : ROT  ?] IF  8 , ELSE [  8 , ] THEN ; IMMEDIATE
@@ -83,30 +78,31 @@ SW 1 , ':' , (cw) @ , ] CREATE ] ;
 : *    ?] IF 12 , ELSE [ 12 , ] THEN ; IMMEDIATE
 : /    ?] IF 13 , ELSE [ 13 , ] THEN ; IMMEDIATE
 : <>   ?] IF 15 , ELSE [ 15 , ] THEN ; IMMEDIATE
+: 2+   ?] IF  9 , 9 , ELSE 1+ 1+ THEN ; IMMEDIATE
+: EMIT ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
 
-: VAR CREATE 3 , HERE 2 + , 99 , 0 , (cw) @ (LAST) ! ;
+: ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 2+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
+: VAR CREATE 3 , HERE 2+ , 99 , 0 , (cw) @ (LAST) ! ;
 : ALLOT 0 DO 0 , LOOP ;
 
-: /MOD DUP BASE @ / DUP BASE @ * ROT SWAP - ;
+: /MOD ( n -- q r ) DUP BASE @ / DUP BASE @ * ROT SWAP - ;
 
-VAR .ct
-: CTYPE .ct ! .ct 1 TYPE ;
-: .BL BL CTYPE ;
-: .CR 13 CTYPE 10 CTYPE ;
+: .BL BL EMIT ;
+: .CR 13 EMIT 10 EMIT ;
 
-: str+ ( addr -- addr ) DUP (inc) DUP @ + ! ;
-: strclr ( addr -- addr ) 0 OVER ! ;
+: str+ ( c addr -- ) DUP (inc) DUP @ + ! ;
+: strclr ( addr -- ) 0 SWAP ! ;
 
 : 2DUP OVER OVER ;
 : ?DUP DUP IF DUP THEN ;
 
-: strcat ( addr -- addr ) SWAP COUNT 0 DO
+: strcat ( from-addr to-addr -- ) SWAP COUNT 0 DO
 		DUP @ 2 PICK str+ 1+
-	LOOP DROP
+	LOOP DROP DROP
 	;
 	
-: strcpy ( addr -- addr ) strclr strcat ;
-	
+: strcpy ( from-addr to-addr -- ) DUP strclr strcat ;
+
 : strcmp ( addr1 addr2 -- bool ) 2DUP @ SWAP @ =
 	IF
 		-1 >R
@@ -125,25 +121,41 @@ VAR .ct
 		0
 	THEN ;
 
-: >XT 2 + COUNT + 1+ ;
-: XT> 1 - @ ;
-: >NAME 2 + ;
-: NAME> 2 - ;
-: XT>NAME XT> >NAME ;
+: HEAD>NAME 2+ ;
+: HEAD>BODY 2+ COUNT + 1+ ;
+: NAME>HEAD 2 - ;
+: BODY>HEAD 1 - @ ;
 
-
-: FIND-WORD ( addr1 -- word-addr|0 ) LAST 
+: .fw ( addr1 -- word-addr|0 ) LAST 
 	10000 0 DO
-		2DUP >NAME strcmp
+		2DUP HEAD>NAME strcmp
 		IF SWAP DROP LEAVE 
 		ELSE DUP 0 =
 			IF DROP DROP 0 LEAVE ELSE @ THEN
 		THEN
 	LOOP ;
 
-: .wrd ;
-: FW .wrd PAD FIND-WORD ;
-: ' FW DUP IF >XT THEN ;
+: .wrd
+	.ss
+	PAD strclr
+	SOURCE >IN @ 
+	DO 
+		DUP >IN @ + @ DUP BL = 
+		IF 
+			DROP LEAVE
+		ELSE
+			PAD str+
+			>IN (inc)
+		THEN
+	LOOP
+	DROP 
+	;
+
+: FIND-WORD .wrd PAD .fw ;
+: ' FIND-WORD DUP IF HEAD>BODY THEN ;
 : EXECUTE ?DUP IF >R THEN ;
+
+: FILL ( addr n b -- ) ROT ROT OVER + SWAP DO DUP I ! LOOP DROP ;
+: ERASE ( addr n -- ) 0 FILL ;
 
 : .fl LAST (HERE) ! LAST @ (LAST) ! ;

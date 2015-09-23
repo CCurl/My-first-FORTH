@@ -316,6 +316,15 @@ int ForthOS::DoExecute()
 			}
 			break;
 
+		case I_EMIT:
+			val = POP();
+			{
+				CString x;
+				x.AppendChar((CHAR) val);
+				AppendOutput(x);
+			}
+			break;
+
 		case I_TO_R: // >R
 			RPUSH(POP());
 			break;
@@ -401,7 +410,7 @@ void ForthOS::BootStrap()
 		I_LITERAL, STATE_ADDRESS, 
 		I_RETURN, COMPILE_BREAK);
 
-	// Built-In WORD: SOURCE
+	// Built-In WORD: TIB
 	Create(StringToMem(INPUT_BUFFER, _T("TIB")), FLAG_IS_NORMAL);
 	Compile(0,
 		I_LITERAL, INPUT_BUFFER,
@@ -678,8 +687,8 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		break;
 
 	case I_OVER:
-		ret.AppendFormat(_T("I_OVER ... 1 "));
-		// NO break, ... : OVER 1 PICK ;
+		ret.AppendFormat(_T("I_OVER"));
+		break;
 
 	case I_PICK:
 		ret.AppendFormat(_T("I_PICK"));
@@ -693,6 +702,10 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_TYPE"));
 		break;
 
+	case I_EMIT:
+		ret.AppendFormat(_T("I_EMIT"));
+		break;
+		
 	case I_TO_R:
 		ret.AppendFormat(_T("I_TO_R (>R)"));
 		break;
