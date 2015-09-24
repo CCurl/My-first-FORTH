@@ -27,6 +27,10 @@
 #define STATE_COMPILING 1
 #define STATE_IMMEDIATE 2
 
+#define MODE_BOOT 0
+#define MODE_BOOTIF 1
+#define MODE_RUN 2
+
 #define MEMORY_SIZE (8*(1024))
 #define STACK_SIZE 128 // Data stack
 #define CSTACK_SIZE 32 // Conditional stack
@@ -115,7 +119,7 @@ class ForthOS
 	}
 
 	int COMMA(int val);
-	int Compile(int num, ...);
+	int Compile(int mode, ...);
 	int HERE() { return MemGet(HERE_ADDRESS); }
 	int LAST() { return MemGet(LAST_ADDRESS); }
 	int TICK(int name, bool& isImmediate);
