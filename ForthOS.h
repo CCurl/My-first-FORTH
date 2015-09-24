@@ -8,18 +8,18 @@
 #define HERE_ADDRESS 1
 #define LAST_ADDRESS 2
 #define STATE_ADDRESS 3
-#define CUR_WORD 4
-#define BASE_ADDRESS 5
-#define SOURCE_ADDRESS 6 // Points to the current input buffer
-#define TOIN_ADDRESS 7 // >IN
+#define BASE_ADDRESS 4
+#define SOURCE_ADDRESS 5 // Points to the current input buffer
+#define TOIN_ADDRESS 6 // >IN
+#define TEMP_REG1 7
+#define TEMP_REG2 8
 
 #define PAD_ADDRESS 950 // PAD
 #define INPUT_BUFFER 21 // typed commands go here
 #define FILE_BUFFER 600 // commands read from file go here
 
-#define CORE_SIZE 2500
-#define CORE_START (memorySize - CORE_SIZE)
-#define DICT_START 1000
+#define DICT_START 0
+#define CODE_START 1000
 
 #define COMPILE_BREAK -999999
 
@@ -67,6 +67,9 @@ class ForthOS
 	~ForthOS();
 
 	int xtComma; // Address of runtime code for ,
+	int xtDComma; // Address of runtime code for D,
+	//int xtPAD; // Address of runtime code for PAD
+	int xtCreate; // Address of runtime code for CREATE
 	bool userMode;
 
 	int DoExecute();
@@ -112,7 +115,7 @@ class ForthOS
 	}
 
 	int COMMA(int val);
-	void ForthOS::Compile(int num, ...);
+	int Compile(int num, ...);
 	int HERE() { return MemGet(HERE_ADDRESS); }
 	int LAST() { return MemGet(LAST_ADDRESS); }
 	int TICK(int name, bool& isImmediate);
@@ -131,13 +134,12 @@ class ForthOS
 		MemSet(addr, len);
 		return addr + len;
 	}
-	int GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name);
+	//int GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name);
 	int GetNextWord(int PAD);
 
-	int Create(int name, int flags);
-	int EndWord();
-	void CommaCall(int addr) { COMMA(I_CALL);  COMMA(addr); }
-	void CommaLiteral(int val) { COMMA(I_LITERAL); COMMA(val); }
+	int Create(int name, int imm_flag, int xt);
+	//void CommaCall(int addr) { COMMA(I_CALL);  COMMA(addr); }
+	//void CommaLiteral(int val) { COMMA(I_LITERAL); COMMA(val); }
 
 	int ParseInput(LPCTSTR commands);
 	void AppendOutput(LPCTSTR text);

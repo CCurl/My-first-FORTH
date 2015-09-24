@@ -1,3 +1,12 @@
+: IMMEDIATE 1 LAST 1 + ! ;
+: ] 1 STATE ! ;
+: [ 0 STATE ! ; IMMEDIATE
+: ?] STATE @ ;
+: = ?] IF 14 , ELSE [ 14 , ] THEN ; IMMEDIATE
+break;
+
+
+
 HERE 999 ! LAST 998 !
 HERE (cw) ! LAST , 0 , 1 , ']' ,                   (cw) @ , 1 STATE ! 1 STATE ! ;
 HERE (cw) ! LAST , 0 , 2 , 'S' , 'W' , (cw) @ , ] HERE (cw) ! LAST , 0 , ; 
@@ -28,7 +37,6 @@ SW 4 , 'L' , 'O' , 'O' , 'P' ,       (cw) @ , ] ?] IF 25 , THEN ; IMMEDIATE
 SW 5 , '+' , 'L' , 'O' , 'O' , 'P' , (cw) @ , ] ?] IF 26 , THEN ; IMMEDIATE
 
 SW 5 , '(' , 'i' , 'n' , 'c' , ')' ,       (cw) @ , ] DUP @ 1+ SWAP ! ;
-SW 5 , 'C' , 'O' , 'U' , 'N' , 'T' ,       (cw) @ , ] DUP @ SWAP 1+ SWAP ;
 
 SW 6 , '.' , 'g' , 'e' , 't' , 'c' , 'h' , (cw) @ , ] (source) @ >IN @ + @ >IN (inc) ;
 
