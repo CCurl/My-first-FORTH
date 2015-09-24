@@ -35,29 +35,6 @@ int ForthOS::COMMA(int val)
 	return here;
 }
 
-int ForthOS::Create(int name, int flags)
-{
-	// Create HERE (CUR) ! LAST , <flags> , <counted-name> (CUR) @ , ;
-	MemSet(CUR_WORD, HERE());
-	COMMA(LAST());
-	COMMA(flags);
-	int len = MemGet(name++);
-	COMMA(len);
-	for (int i = 1; i <= len; i++)
-	{
-		COMMA(MemGet(name++));
-	}
-	COMMA(MemGet(CUR_WORD));
-	return HERE();
-}
-
-int ForthOS::EndWord()
-{
-	MemSet(LAST_ADDRESS, MemGet(CUR_WORD));
-	MemSet(STATE_ADDRESS, 0);
-	return LAST();
-}
-
 int ForthOS::EXECUTE(int xt)
 {
 	IP = xt;
@@ -91,15 +68,15 @@ int ForthOS::EXECUTE(int xt)
 
 int ForthOS::DoExecute()
 {
-	int addr, arg1, arg2, val;
+	int addr = 0, arg1 = 0, arg2 = 0, val = 0;
 	CStackEntry *cse = NULL;
 
 	while (true)
 	{
-		//if (IP == 1677)
-		//{
-		//	int ccc = 0;
-		//}
+		if (IP == 1225)
+		{
+			int ccc = 0;
+		}
 		INSTR_T instr = (INSTR_T)MemGet(IP++);
 		switch (instr)
 		{
@@ -339,12 +316,16 @@ int ForthOS::DoExecute()
 			RPUSH(val);
 			break;
 
+		case I_DICTP: // 
+			addr = MemGet(IP++);
+			break;
+
 		default:
 			// Must be a user defined word
-		{
-				   CString err; err.Format(_T("invalid instruction: %d"), instr);
-				   throw err;
-		}
+			{
+				CString err; err.Format(_T("invalid instruction (%d) at %d."), instr, IP-1);
+				throw err;
+			}
 			break;
 		}
 	}
@@ -352,175 +333,342 @@ int ForthOS::DoExecute()
 	return 0;
 }
 
-void ForthOS::Compile(int num, ...)
+int ForthOS::Compile(int mode, ...)
 {
 	int here = HERE();
+	int xt = here;
+
+	if ((mode == MODE_BOOT) || (mode == MODE_BOOTIF))
+	{
+		MemSet(here++, I_DICTP);
+		MemSet(here++, LAST());
+	}
+
 	va_list code;
-	va_start(code, num);
+	va_start(code, mode);
 	int val = va_arg(code, int);
 	while (val != COMPILE_BREAK)
 	{
 		MemSet(here++, val);
+		if ((mode == MODE_BOOT) && ((val == I_IF_RT) || (val == I_GOTO)))
+		{
+			int offset = va_arg(code, int);
+			MemSet(here++, here + offset);
+		}
 		val = va_arg(code, int);
 	}
 	va_end(code);
 	MemSet(HERE_ADDRESS, here);
-	EndWord();
+	// EndWord();
+	return xt;
 }
+
+//int offsetToNextWord; // name length + 4
+//int flags; // bit 1 = IMMEDIATE
+//int xt; // address of the start the of code
+//int nameLength;
+//int name[];
+int ForthOS::Create(int name, int imm_flag, int xt)
+{
+	int name_len = MemGet(name++);
+	int entry_len = name_len + 4;
+	int entry_here = LAST() - entry_len;
+
+	MemSet(LAST_ADDRESS, entry_here);
+	MemSet(xt + 1, entry_here);
+	MemSet(entry_here++, entry_len);
+	MemSet(entry_here++, imm_flag);
+	MemSet(entry_here++, xt);
+	MemSet(entry_here++, name_len);
+	for (int i = 0; i < name_len; i++)
+	{
+		MemSet(entry_here++, MemGet(name++));
+	}
+
+	return xt;
+}
+
+/*
+SW 6 , 'C' , 'R' , 'E' , 'A' , 'T' , 'E' , (cw) @ , ]
+	.ss
+	HERE (cw) ! LAST , 0 , HERE >R 0 ,
+	SOURCE >IN @
+	DO
+		DUP >IN @ + @ DUP BL =
+		IF
+			DROP LEAVE
+		ELSE
+			,
+			R@ (inc)
+			>IN (inc)
+		THEN
+	LOOP
+	DROP R> DROP
+	(cw) @ ,
+	;
+*/
 
 void ForthOS::BootStrap()
 {
+	int xt = 0;
+
 	// Reset Here pointer
 	// MemSet(HERE_ADDRESS, CORE_START);
-	MemSet(HERE_ADDRESS, DICT_START);
-	MemSet(LAST_ADDRESS, MemGet(HERE_ADDRESS));
+	MemSet(LAST_ADDRESS, memorySize - 1);
+	MemSet(HERE_ADDRESS, CODE_START);
 	MemSet(BASE_ADDRESS, 10); // Decimal
 	MemSet(SOURCE_ADDRESS, INPUT_BUFFER);
 
-	COMMA(0); // End of word chain
-	COMMA(0); // FLAGS
-	COMMA(0); // LEN
-	COMMA(1000); // BACK-PTR
-	COMMA(I_RETURN); // BACK-PTR
+	MemSet(MemGet(LAST_ADDRESS), 0);
+
+	// Built-In WORD: PAD
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, LAST_ADDRESS, I_FETCH,
+		I_LITERAL, 100, I_MINUS,
+		I_RETURN, COMPILE_BREAK);
+	int xtPad = Create(StringToMem(INPUT_BUFFER, _T("PAD")), FLAG_IS_NORMAL, xt);
+
+	// COUNT
+	xt = Compile(MODE_BOOT,
+		I_DUP, I_FETCH, I_SWAP, I_ONEPLUS, I_SWAP,
+		I_RETURN, COMPILE_BREAK);
+	int xtCount = Create(StringToMem(INPUT_BUFFER, _T("COUNT")), FLAG_IS_NORMAL, xt);
+
+	// SOURCE
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, SOURCE_ADDRESS, I_FETCH,
+		I_CALL, xtCount,
+		I_RETURN, COMPILE_BREAK);
+	int xtSource = Create(StringToMem(INPUT_BUFFER, _T("SOURCE")), FLAG_IS_NORMAL, xt);
+
+	// .inc.
+	xt = Compile(MODE_BOOT,
+		I_DUP, I_FETCH, I_ONEPLUS, I_SWAP, I_STORE,
+		I_RETURN, COMPILE_BREAK);
+	int xtInc = Create(StringToMem(INPUT_BUFFER, _T(".inc.")), FLAG_IS_NORMAL, xt);
+
+	// .str+.
+	xt = Compile(MODE_BOOT,
+		I_DUP, I_CALL, xtInc, I_DUP, I_FETCH, I_PLUS, I_STORE,
+		I_RETURN, COMPILE_BREAK);
+	int xtStrPlus = Create(StringToMem(INPUT_BUFFER, _T(".str+.")), FLAG_IS_NORMAL, xt);
+
+	// >IN @
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, TOIN_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
+	int xtToIN = Create(StringToMem(INPUT_BUFFER, _T(">IN")), FLAG_IS_NORMAL, xt);
+
+	xt = Compile(MODE_BOOT,
+		// Skip leading blanks
+		I_CALL, xtSource, I_CALL, xtToIN, I_FETCH,
+		I_DO,
+		/**/ I_DUP, I_I, I_PLUS, I_FETCH,
+		/**/ I_DUP, I_LITERAL, 32, I_EQ,
+		/**/ I_IF_RT, 7,
+		/******/ I_DROP, I_CALL, xtToIN, I_CALL, xtInc,
+		/**/ I_GOTO, 2,
+		/******/ I_DROP, I_LEAVE,
+		I_LOOP, I_DROP,
+
+		// Initialize PAD
+		I_LITERAL, 0, I_CALL, xtPad, I_STORE,
+
+		I_CALL, xtSource, I_CALL, xtToIN, I_FETCH,
+		I_DO,
+		/**/ I_DUP, I_I, I_PLUS, I_FETCH,
+		/**/ I_DUP, I_LITERAL, 32, I_EQ,
+		/**/ I_IF_RT, 4,
+		/******/ I_DROP, I_LEAVE,
+		/**/ I_GOTO, 8,
+		/******/ I_CALL, xtPad, I_CALL, xtStrPlus,
+		/******/ I_CALL, xtToIN, I_CALL, xtInc,
+		I_LOOP, I_DROP,
+
+		I_RETURN, COMPILE_BREAK);
+	int xtWord = Create(StringToMem(INPUT_BUFFER, _T(".word.")), FLAG_IS_NORMAL, xt);
+
+	// Built-In WORD: LAST
+	// : LAST (LAST) @ ;
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, LAST_ADDRESS, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
+	int xtLAST = Create(StringToMem(INPUT_BUFFER, _T("LAST")), FLAG_IS_NORMAL, xt);
+
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, HERE_ADDRESS, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
+	int xtHERE = Create(StringToMem(INPUT_BUFFER, _T("HERE")), FLAG_IS_NORMAL, xt);
+
+	// .word. abc PAD COUNT DUP 4 + LAST SWAP - . . . .
+	xt = Compile(MODE_BOOT,
+		I_CALL, xtWord,
+		I_CALL, xtPad, I_FETCH, I_LITERAL, 4, I_PLUS, 
+		I_DUP, I_CALL, xtLAST, I_SWAP, I_MINUS,
+		I_DUP, I_LITERAL, TEMP_REG1, I_STORE, I_LITERAL, TEMP_REG2, I_STORE,
+		I_LITERAL, TEMP_REG1, I_FETCH, I_STORE, // Offset to nxt word
+		I_LITERAL, TEMP_REG1, I_CALL, xtInc,
+		I_LITERAL, 0, I_LITERAL, TEMP_REG1, I_FETCH, I_STORE, // imm_flag defaults to ZERO
+		I_LITERAL, TEMP_REG1, I_CALL, xtInc,
+		I_CALL, xtHERE, I_LITERAL, TEMP_REG1, I_FETCH, I_STORE,
+		I_LITERAL, TEMP_REG1, I_CALL, xtInc,
+		I_CALL, xtPad, I_FETCH, I_LITERAL, TEMP_REG1, I_FETCH, I_STORE,
+		I_CALL, xtPad, I_FETCH, I_ONEPLUS, I_LITERAL, 1,
+		I_DO,
+		/**/ I_CALL, xtPad, I_I, I_PLUS, I_FETCH,
+		/**/ I_LITERAL, TEMP_REG1, I_FETCH, I_I, I_PLUS, I_STORE, 
+		I_LOOP,
+		I_LITERAL, TEMP_REG2, I_FETCH, I_LITERAL, LAST_ADDRESS, I_STORE,
+		I_RETURN, COMPILE_BREAK);
+	int xtCreate = Create(StringToMem(INPUT_BUFFER, _T("CREATE")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: , ( n -- )
 	// : , (HERE) @ SWAP OVER ! 1+ (HERE) ! ;
-	xtComma = Create(StringToMem(INPUT_BUFFER, _T(",")), FLAG_IS_NORMAL);
-	Compile(0, 
-		I_LITERAL, HERE_ADDRESS, I_FETCH, 
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, HERE_ADDRESS, I_FETCH,
 		I_SWAP, I_OVER, I_STORE,
 		I_ONEPLUS,
 		I_LITERAL, HERE_ADDRESS, I_STORE,
 		I_RETURN, COMPILE_BREAK);
+	xtComma = Create(StringToMem(INPUT_BUFFER, _T(",")), FLAG_IS_NORMAL, xt);
+
+	// Built-In VAR: : (COLON)
+	xt = Compile(MODE_BOOT,
+		I_CALL, xtCreate,
+		I_LITERAL, I_DICTP, I_CALL, xtComma, 
+		I_LITERAL, TEMP_REG2, I_FETCH, I_CALL, xtComma,
+		I_LITERAL, 1, I_LITERAL, STATE_ADDRESS, I_STORE,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T(":")), FLAG_IS_NORMAL, xt);
 
 	// Built-In VAR: (HERE)
-	Create(StringToMem(INPUT_BUFFER, _T("(HERE)")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, HERE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
-
-	int xtHERE = Create(StringToMem(INPUT_BUFFER, _T("HERE")), FLAG_IS_NORMAL);
-	Compile(0,
-		I_LITERAL, HERE_ADDRESS, I_FETCH,
-		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("(HERE)")), FLAG_IS_NORMAL, xt);
 
 	// Built-In VAR: STATE
-	Create(StringToMem(INPUT_BUFFER, _T("STATE")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, STATE_ADDRESS, 
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("STATE")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: TIB
-	Create(StringToMem(INPUT_BUFFER, _T("TIB")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, INPUT_BUFFER,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("TIB")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: >IN
-	Create(StringToMem(INPUT_BUFFER, _T(">IN")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, TOIN_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
-
-	// Built-In WORD: PAD
-	Create(StringToMem(INPUT_BUFFER, _T("PAD")), FLAG_IS_NORMAL);
-	Compile(0,
-		I_CALL, xtHERE, I_LITERAL, 100, I_PLUS,
-		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T(">IN")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: BASE
-	Create(StringToMem(INPUT_BUFFER, _T("BASE")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, BASE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("BASE")), FLAG_IS_NORMAL, xt);
+
+	// TYPE
+	xt = Compile(MODE_BOOT,
+		I_TYPE,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("TYPE")), FLAG_IS_NORMAL, xt);
+
+	// . (DOT)
+	xt = Compile(MODE_BOOT,
+		I_DOT,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T(".")), FLAG_IS_NORMAL, xt);
+
+	// EMIT
+	xt = Compile(MODE_BOOT,
+		I_EMIT,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("EMIT")), FLAG_IS_NORMAL, xt);
+
+	// Built-In WORD: DUP
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, STATE_ADDRESS, I_FETCH,
+		I_IF_RT, 5,
+		I_LITERAL, I_DUP,
+		I_CALL, xtComma,
+		I_RETURN,
+		I_DUP,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("DUP")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: @ (I_FETCH)
-	// : <BUILDS I_FETCH , DOES> I_FETCH ; IMMEDIATE
-	int xtFetch = Create(StringToMem(INPUT_BUFFER, _T("@")), FLAG_IS_IMMEDIATE);
-	// STATE @ 1 = IF ELSE THEN ;
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
-		I_IF_RT, HERE() + 11,
+		I_IF_RT, 5,
 		I_LITERAL, I_FETCH,
 		I_CALL, xtComma,
-		I_GOTO, HERE() + 12,
+		I_RETURN,
 		I_FETCH,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("@")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: ! (STORE)
-	// : ! <BUILDS STORE , DOES> STORE ; IMMEDIATE
-	int xtSTORE = Create(StringToMem(INPUT_BUFFER, _T("!")), FLAG_IS_IMMEDIATE);
-	Compile(0,
+	// : ! STATE @ IF 2 , ELSE [ 2 , ] THEN ; IMMEDIATE
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
-		I_IF_RT, HERE() + 11,
+		I_IF_RT, 5,
 		I_LITERAL, I_STORE,
 		I_CALL, xtComma,
-		I_GOTO, HERE() + 12,
+		I_RETURN,
 		I_STORE,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("!")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: +
-	// : ! <BUILDS STORE , DOES> STORE ; IMMEDIATE
-	int xtPLUS = Create(StringToMem(INPUT_BUFFER, _T("+")), FLAG_IS_IMMEDIATE);
-	Compile(0,
+	// : + STATE @ IF 10 , ELSE [ 10 , ] THEN ; IMMEDIATE
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
-		I_IF_RT, HERE() + 11,
+		I_IF_RT, 5,
 		I_LITERAL, I_PLUS,
 		I_CALL, xtComma,
-		I_GOTO, HERE() + 12,
+		I_RETURN,
 		I_PLUS,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("+")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: (LAST)
-	int xtLastVar = Create(StringToMem(INPUT_BUFFER, _T("(LAST)")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, LAST_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
-
-	// Built-In WORD: LAST
-	// : LAST (LAST) @ ;
-	int xtLAST = Create(StringToMem(INPUT_BUFFER, _T("LAST")), FLAG_IS_NORMAL);
-	Compile(0,
-		I_LITERAL, LAST_ADDRESS, I_FETCH,
-		I_RETURN, COMPILE_BREAK);
-
-	// Built-In VAR: (cw)
-	Create(StringToMem(INPUT_BUFFER, _T("(cw)")), FLAG_IS_NORMAL);
-	Compile(0,
-		I_LITERAL, CUR_WORD,
-		I_RETURN, COMPILE_BREAK);
+	int xtLastVar = Create(StringToMem(INPUT_BUFFER, _T("(LAST)")), FLAG_IS_NORMAL, xt);
 
 	// Built-In VAR: (src)
-	Create(StringToMem(INPUT_BUFFER, _T("(source)")), FLAG_IS_NORMAL);
-	Compile(0,
+	xt = Compile(MODE_BOOT,
 		I_LITERAL, SOURCE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("(source)")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: ; (END-WORD)
 	// : ; <I_RETURN> , (cw) @ (LAST) ! 0 STATE ! ; IMMEDIATE
-	int addrSemiColon = Create(StringToMem(INPUT_BUFFER, _T(";")), FLAG_IS_IMMEDIATE);
-	Compile(0,
-		I_LITERAL, I_RETURN, 
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, I_RETURN,
 		I_CALL, xtComma,
-		I_LITERAL, CUR_WORD, I_FETCH,
-		I_LITERAL, LAST_ADDRESS, I_STORE,
 		I_LITERAL, 0, I_LITERAL, STATE_ADDRESS, I_STORE,
 		I_RETURN, COMPILE_BREAK);
+	int addrSemiColon = Create(StringToMem(INPUT_BUFFER, _T(";")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: IF ( -- c-addr )
 	// Check the STATE; if interpreting, 
-	Create(StringToMem(INPUT_BUFFER, _T("IF")), FLAG_IS_IMMEDIATE);
-	Compile(0,
+	xt = Compile(MODE_BOOTIF,
 		I_LITERAL, I_IF_RT,
 		I_CALL, xtComma,
 		I_CALL, xtHERE,
 		I_LITERAL, 0,
 		I_CALL, xtComma,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("IF")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: ELSE ( c-addr -- c-addr )
-	Create(StringToMem(INPUT_BUFFER, _T("ELSE")), FLAG_IS_IMMEDIATE);
-	Compile(0,
+	xt = Compile(MODE_BOOTIF,
 		I_LITERAL, I_GOTO,
 		I_CALL, xtComma,
 		I_CALL, xtHERE,
@@ -530,31 +678,28 @@ void ForthOS::BootStrap()
 		I_ROT,
 		I_STORE,
 		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("ELSE")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: THEN ( c-addr -- )
-	Create(StringToMem(INPUT_BUFFER, _T("THEN")), FLAG_IS_IMMEDIATE);
-	Compile(0,
+	xt = Compile(MODE_BOOTIF,
 		I_CALL, xtHERE,
 		I_SWAP,
 		I_STORE,
 		I_RETURN, COMPILE_BREAK);
-
-	PUSH(99999);
-	EXECUTE(xtComma);
+	Create(StringToMem(INPUT_BUFFER, _T("THEN")), FLAG_IS_IMMEDIATE, xt);
 }
 
 void ForthOS::ResolveCall(CString& ret, int addr)
 {
-	ret.Append(_T(" ("));
+	ret.Append(_T(" ... "));
 	CString tmp;
-	addr = MemGet(addr - 1) + 2;
+	addr += 3;
 	int len = MemGet(addr++);
 	for (int i = 0; i < len; i++)
 	{
 		CHAR c = MemGet(addr++);
 		ret.AppendChar(c);
 	}
-	ret.Append(_T(")"));
 }
 
 int ForthOS::DumpInstr(int xt, CString& ret)
@@ -568,6 +713,7 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	case I_CALL:
 		addr = MemGet(xt++);
 		ret.AppendFormat(_T("I_CALL %04d"), addr);
+		addr = MemGet(addr + 1);
 		ResolveCall(ret, addr);
 		break;
 
@@ -718,6 +864,12 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_R_AT (R@)"));
 		break;
 
+	case I_DICTP:
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T("I_DICTP (%04d)"), addr);
+		ResolveCall(ret, addr);
+		break;
+
 	default:
 		// Must be a user defined word
 		ret.AppendFormat(_T(".INT %d"), instr);
@@ -733,6 +885,10 @@ int ForthOS::DumpWord(int xt, CString& ret, int stopHere)
 
 	while (xt < stopHere)
 	{
+		if (MemGet(xt) == I_DICTP)
+		{
+			ret.Append(_T("\r\n"));
+		}
 		xt = DumpInstr(xt, def);
 		ret.AppendFormat(_T("%s\r\n"), def);
 	}
@@ -773,38 +929,66 @@ void ForthOS::Dump(CString& ret)
 	for (int i = 0; i < 100; i++)
 	{
 		ret.AppendFormat(_T("   [%-2d] %-4d"), i, MemGet(i));
-		if ((i%10 == 0) && (i > 0))
+		if ((i % 10 == 0) && (i > 0))
 			ret.Append(_T("\r\n"));
 	}
 	ret.Append(_T("\r\n\r\n"));
 
-	CString hdr, def;
-	int addr = MemGet(LAST_ADDRESS);
-	int thisWord = addr;
-	int stopHere = HERE();
-	while (addr != 0)
+	int entryStart = MemGet(LAST_ADDRESS);
+	int entrySize = MemGet(entryStart);
+	while (entrySize != 0)
 	{
-		def.Format(_T("%04d: ; "), addr);
-		int prev = MemGet(addr++);
-		int imm = MemGet(addr++);
-		int len = MemGet(addr++);
-		def.AppendFormat(_T("%04d %s (%d) "), prev, imm ? _T("(immediate)") : _T("0"), len);
-		for (int i = 0; i < len; i++)
+		CString name;
+		int addr = entryStart;
+		entrySize = MemGet(addr++);
+		if (entrySize == 0)
+			continue;
+		int flags = MemGet(addr++);
+		int isImmediate = (flags & 0x0001) != 0;
+		int xt = MemGet(addr++);
+		int nameLen = MemGet(addr++);
+		if (addr == 8060)
+			int sss = 4;
+		for (int i = 0; i < nameLen; i++)
 		{
-			int c = MemGet(addr++);
-			def.AppendChar((CHAR)c);
+			name.AppendChar((CHAR)MemGet(addr+i));
 		}
-		int wordStart = MemGet(addr++);
-		hdr.Format(_T("%s (%04d)"), def, wordStart);
-		addr = DumpWord(addr, def, stopHere);
-		CString fullDef;
-		fullDef.AppendFormat(_T("%s\r\n%s\r\n"), hdr, def);
-		ret.Append(fullDef);
-
-		stopHere = thisWord;
-		thisWord = MemGet(thisWord);
-		addr = thisWord;
+		ret.AppendFormat(_T("[%04d] %d, %d, %d, %d, %s\r\n"), entryStart, entrySize, isImmediate, xt, nameLen, name);
+		entryStart += entrySize;
 	}
+
+	CString code;
+	DumpWord(CODE_START, code, HERE());
+	ret.Append(_T("\r\n"));
+	ret.Append(code);
+
+	//CString hdr, def;
+	//int addr = MemGet(LAST_ADDRESS);
+	//int thisWord = addr;
+	//int stopHere = HERE();
+	//while (addr != 0)
+	//{
+	//	def.Format(_T("%04d: ; "), addr);
+	//	int prev = MemGet(addr++);
+	//	int imm = MemGet(addr++);
+	//	int len = MemGet(addr++);
+	//	def.AppendFormat(_T("%04d %s (%d) "), prev, imm ? _T("(immediate)") : _T("0"), len);
+	//	for (int i = 0; i < len; i++)
+	//	{
+	//		int c = MemGet(addr++);
+	//		def.AppendChar((CHAR)c);
+	//	}
+	//	int wordStart = MemGet(addr++);
+	//	hdr.Format(_T("%s (%04d)"), def, wordStart);
+	//	addr = DumpWord(addr, def, stopHere);
+	//	CString fullDef;
+	//	fullDef.AppendFormat(_T("%s\r\n%s\r\n"), hdr, def);
+	//	ret.Append(fullDef);
+
+	//	stopHere = thisWord;
+	//	thisWord = MemGet(thisWord);
+	//	addr = thisWord;
+	//}
 
 	//for (int addr = DICT_START; addr < HERE(); addr++)
 	//{
@@ -861,23 +1045,24 @@ int ForthOS::CompareStrings(int addr1, int addr2)
 // Returns start of code for the word, 0 if not found
 int ForthOS::TICK(int nameAddr, bool& isImmediate)
 {
-	int thisWord = MemGet(LAST_ADDRESS);
-	while (thisWord != 0)
+	int entryStart = MemGet(LAST_ADDRESS);
+	int entrySize = MemGet(entryStart);
+	while (entrySize != 0)
 	{
-		int addr = thisWord;
-		int nextWord = MemGet(addr++);
+		int addr = entryStart;
+		entrySize = MemGet(addr++);
+		if (entrySize == 0)
+			continue;
+
 		int flags = MemGet(addr++);
 		isImmediate = (flags & 0x0001) != 0;
+		int xt = MemGet(addr++);
 		int wordName = addr;
-		//{
-		//	CString tmp; MemToString(wordName, tmp);
-		//}
-		if (CompareStrings(wordName, nameAddr))
+		if (CompareStrings(addr, nameAddr))
 		{
-			int len = MemGet(addr);
-			return addr + len + 2;
+			return xt;
 		}
-		thisWord = nextWord;
+		entryStart += entrySize;
 	}
 	return 0;
 }
@@ -1010,69 +1195,69 @@ int ForthOS::GetNextWord(int PAD)
 }
 
 // ( addr len -- 
-int ForthOS::GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name)
-{
-	int len = 0;
-	MemSet(copyTo, len);
-	name.Empty();
-	int addr = MemGet(SOURCE_ADDRESS) + toIN;
-
-	// Skip leading whitespace
-	while ((addr <= stopAddr) && iswspace(MemGet(addr)))
-	{
-		addr = MemGet(SOURCE_ADDRESS) + (++toIN);
-	}
-
-	if (addr > stopAddr)
-	{
-		return copyTo;
-	}
-
-	CHAR match = 0;
-	CHAR c = MemGet(addr);
-	if (c == '\'') 
-	{
-		int a1 = addr + 2;
-		if ((a1 <= stopAddr) && (MemGet(a1) == '\''))
-		{
-			toIN += 3;
-			name.Format(_T("'%c'"), (CHAR)MemGet(addr + 1));
-			StringToMem(copyTo, name);
-			return copyTo;
-		}
-	}
-	else if (c == '\"')
-	{
-		addr = MemGet(SOURCE_ADDRESS) + (++toIN);
-		match = c;
-		MemSet(copyTo, ++len);
-		MemSet(copyTo + len, c);
-		name.AppendChar(c);
-	}
-
-	while (addr <= stopAddr)
-	{
-		c = MemGet(addr);
-		bool addIt = (!iswspace(c)) || (match != 0);
-		if ((match != 0) && (c == match))
-		{
-			match = 0;
-		}
-		if (addIt)
-		{
-			addr = MemGet(SOURCE_ADDRESS) + (++toIN);
-			MemSet(copyTo, ++len);
-			MemSet(copyTo + len, c);
-			name.AppendChar(c);
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	return copyTo;
-}
+//int ForthOS::GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name)
+//{
+//	int len = 0;
+//	MemSet(copyTo, len);
+//	name.Empty();
+//	int addr = MemGet(SOURCE_ADDRESS) + toIN;
+//
+//	// Skip leading whitespace
+//	while ((addr <= stopAddr) && iswspace(MemGet(addr)))
+//	{
+//		addr = MemGet(SOURCE_ADDRESS) + (++toIN);
+//	}
+//
+//	if (addr > stopAddr)
+//	{
+//		return copyTo;
+//	}
+//
+//	CHAR match = 0;
+//	CHAR c = MemGet(addr);
+//	if (c == '\'') 
+//	{
+//		int a1 = addr + 2;
+//		if ((a1 <= stopAddr) && (MemGet(a1) == '\''))
+//		{
+//			toIN += 3;
+//			name.Format(_T("'%c'"), (CHAR)MemGet(addr + 1));
+//			StringToMem(copyTo, name);
+//			return copyTo;
+//		}
+//	}
+//	else if (c == '\"')
+//	{
+//		addr = MemGet(SOURCE_ADDRESS) + (++toIN);
+//		match = c;
+//		MemSet(copyTo, ++len);
+//		MemSet(copyTo + len, c);
+//		name.AppendChar(c);
+//	}
+//
+//	while (addr <= stopAddr)
+//	{
+//		c = MemGet(addr);
+//		bool addIt = (!iswspace(c)) || (match != 0);
+//		if ((match != 0) && (c == match))
+//		{
+//			match = 0;
+//		}
+//		if (addIt)
+//		{
+//			addr = MemGet(SOURCE_ADDRESS) + (++toIN);
+//			MemSet(copyTo, ++len);
+//			MemSet(copyTo + len, c);
+//			name.AppendChar(c);
+//		}
+//		else
+//		{
+//			break;
+//		}
+//	}
+//
+//	return copyTo;
+//}
 
 int ForthOS::ParseInput(LPCTSTR commands)
 {
@@ -1227,7 +1412,7 @@ void ForthOS::ExecuteWord(int PAD)
 			}
 			else // Build it into the word's definition
 			{
-				CommaCall(xt);
+				Compile(MODE_RUN, I_CALL, xt, COMPILE_BREAK);
 			}
 		}
 		else
@@ -1243,7 +1428,11 @@ void ForthOS::ExecuteWord(int PAD)
 	{
 		if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
 		{
-			CommaLiteral(num);
+			Compile(MODE_RUN, I_LITERAL, num, COMPILE_BREAK);
+			//PUSH(I_LITERAL);
+			//EXECUTE(xtComma);
+			//PUSH(num);
+			//EXECUTE(xtComma);
 		}
 		else
 		{
@@ -1256,7 +1445,11 @@ void ForthOS::ExecuteWord(int PAD)
 	{
 		if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
 		{
-			CommaLiteral(num);
+			Compile(MODE_RUN, I_LITERAL, num, COMPILE_BREAK);
+			//PUSH(I_LITERAL);
+			//EXECUTE(xtComma);
+			//PUSH(num);
+			//EXECUTE(xtComma);
 		}
 		else
 		{
@@ -1269,27 +1462,28 @@ void ForthOS::ExecuteWord(int PAD)
 	{
 		int len = MemGet(PAD++) - 2;
 		MemSet(PAD, len);
-		//throw CString("quoted string not implemented.");
-		if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
-		{
-			// Put addr of string on the stack
-			CommaLiteral(HERE()+4);
-			COMMA(I_GOTO);
-			COMMA(HERE() + len + 2);
-			COMMA(len);
-			for (int i = 1; i <= len; i++)
-			{
-				COMMA(MemGet(PAD + i));
-			}
-		}
-		else
-		{
-			name = name.Mid(1, name.GetLength() - 2);
-			StringToMem(HERE() + 1, name);
-			PUSH(HERE()+1);
-			// throw CString("quoted string not implemented.");
-		}
-		return;
+		throw CString("quoted string not implemented.");
+		//if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
+		//{
+		//	// Put addr of string on the stack
+		//	Compile(MODE_BOOT, I_LITERAL, num, COMPILE_BREAK);
+		//	//CommaLiteral(HERE() + 4);
+		//	COMMA(I_GOTO);
+		//	COMMA(HERE() + len + 2);
+		//	COMMA(len);
+		//	for (int i = 1; i <= len; i++)
+		//	{
+		//		COMMA(MemGet(PAD + i));
+		//	}
+		//}
+		//else
+		//{
+		//	name = name.Mid(1, name.GetLength() - 2);
+		//	StringToMem(HERE() + 1, name);
+		//	PUSH(HERE()+1);
+		//	// throw CString("quoted string not implemented.");
+		//}
+		// return;
 	}
 
 	// QUIT logic
