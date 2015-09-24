@@ -49,5 +49,7 @@ typedef enum {
 	I_OVER,
 	I_EMIT,
 	I_DICTP, 
+	I_ONEMINUS,
+	I_NOT,
 	I_RETURN = 99,
 } INSTR_T;

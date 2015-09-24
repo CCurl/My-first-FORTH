@@ -209,14 +209,15 @@ int ForthOS::DoExecute()
 			break;
 
 		case I_ONEPLUS:
-			arg1 = POP();
-			PUSH(arg1 + 1);
+			PUSH(POP() + 1);
+			break;
+
+		case I_ONEMINUS:
+			PUSH(POP() - 1);
 			break;
 
 		case I_PLUS:
-			arg2 = POP();
-			arg1 = POP();
-			PUSH(arg1 + arg2);
+			PUSH(POP() + POP());
 			break;
 
 		case I_MINUS:
@@ -226,9 +227,7 @@ int ForthOS::DoExecute()
 			break;
 
 		case I_MULT:
-			arg2 = POP();
-			arg1 = POP();
-			PUSH(arg1 * arg2);
+			PUSH(POP() * POP());
 			break;
 
 		case I_DIV:
@@ -253,6 +252,10 @@ int ForthOS::DoExecute()
 
 		case I_LT:
 			PUSH((POP() > POP()) ? -1 : 0);
+			break;
+
+		case I_NOT:
+			PUSH((POP() == 0) ? -1 : 0);
 			break;
 
 		case I_OVER:
@@ -800,6 +803,10 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_ONEPLUS"));
 		break;
 
+	case I_ONEMINUS:
+		ret.AppendFormat(_T("I_ONEMINUS"));
+		break;
+
 	case I_PLUS:
 		ret.AppendFormat(_T("I_PLUS"));
 		break;
@@ -818,6 +825,10 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 
 	case I_EQ:
 		ret.AppendFormat(_T("I_EQ"));
+		break;
+
+	case I_NOT:
+		ret.AppendFormat(_T("I_NOT"));
 		break;
 
 	case I_NEQ:

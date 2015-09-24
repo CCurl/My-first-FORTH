@@ -27,11 +27,16 @@ HERE 999 ! LAST 998 !
 : LOOP  ?] IF 25 , ELSE [ 25 , ] THEN ; IMMEDIATE
 : +LOOP ?] IF 26 , ELSE [ 26 , ] THEN ; IMMEDIATE
 : OVER  ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE
+: 1-    ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE
+: NOT   ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE
 : 2+    ?] IF  9 , 9 , ELSE 1+ 1+ THEN ; IMMEDIATE
 
 : BEGIN ?] IF HERE   THEN ; IMMEDIATE
 : EXIT  ?] IF 99 ,   THEN ; IMMEDIATE
 : AGAIN ?] IF 27 , , THEN ; IMMEDIATE
+
+ :  <= 1+ < ;
+ :  >= 1 - > ;
 
 : BL 32 ;
 
@@ -86,6 +91,8 @@ HERE 999 ! LAST 998 !
 : NAME>HEAD 3 - ;
 : BODY>HEAD 1+ @ ;
 
+: .fl.  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
+
 break;
 
 : .fw ( addr1 -- word-addr|0 ) LAST 
@@ -107,6 +114,3 @@ break;
 : :NONAME ( -- code-addr ) HERE ] ;
 : NONAME; ?] IF 99 , 0 STATE ! THEN ; IMMEDIATE
 ( Usage: :NONAME 1 2 3 + + . NONAME; )
-
-: .fl LAST (HERE) ! LAST @ (LAST) ! ;
-
