@@ -11,10 +11,11 @@
 #define BASE_ADDRESS 4
 #define SOURCE_ADDRESS 5 // Points to the current input buffer
 #define TOIN_ADDRESS 6 // >IN
-#define TEMP_REG1 7
-#define TEMP_REG2 8
+#define	MEMLAST_ADDRESS 7
+#define TEMP_REG1 8
+#define TEMP_REG2 9
 
-#define PAD_ADDRESS 950 // PAD
+// #define PAD_ADDRESS 950 // PAD
 #define INPUT_BUFFER 21 // typed commands go here
 #define FILE_BUFFER 600 // commands read from file go here
 

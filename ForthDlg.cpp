@@ -137,6 +137,11 @@ HCURSOR CForthDlg::OnQueryDragIcon()
 void CForthDlg::OnBnClickedOk()
 {
 	UpdateData(TRUE);
+	if (commands.CompareNoCase(_T("bye")) == 0)
+	{
+		EndDialog(IDOK);
+		return;
+	}
 	if (myOS == NULL)
 	{
 		myOS = new ForthOS(this->memSize);

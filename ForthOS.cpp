@@ -418,6 +418,7 @@ void ForthOS::BootStrap()
 	// Reset Here pointer
 	// MemSet(HERE_ADDRESS, CORE_START);
 	MemSet(LAST_ADDRESS, memorySize - 1);
+	MemSet(MEMLAST_ADDRESS, memorySize - 1);
 	MemSet(HERE_ADDRESS, CODE_START);
 	MemSet(BASE_ADDRESS, 10); // Decimal
 	MemSet(SOURCE_ADDRESS, INPUT_BUFFER);
@@ -690,6 +691,12 @@ void ForthOS::BootStrap()
 		I_STORE,
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("THEN")), FLAG_IS_IMMEDIATE, xt);
+
+	// Built-In WORD: MEM_LAST ( -- n )
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, MEMLAST_ADDRESS, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("MEM_LAST")), FLAG_IS_NORMAL, xt);
 }
 
 void ForthOS::ResolveCall(CString& ret, int addr)

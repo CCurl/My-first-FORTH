@@ -28,15 +28,15 @@ HERE 999 ! LAST 998 !
 : +LOOP ?] IF 26 , ELSE [ 26 , ] THEN ; IMMEDIATE
 : OVER  ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE
 : 1-    ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE
-: NOT   ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE
+: 0=    ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE
 : 2+    ?] IF  9 , 9 , ELSE 1+ 1+ THEN ; IMMEDIATE
 
-: BEGIN ?] IF HERE   THEN ; IMMEDIATE
-: EXIT  ?] IF 99 ,   THEN ; IMMEDIATE
-: AGAIN ?] IF 27 , , THEN ; IMMEDIATE
+: BEGIN  ?] IF HERE   THEN ; IMMEDIATE
+: EXIT   ?] IF 99 ,   THEN ; IMMEDIATE
+: REPEAT ?] IF 27 , , THEN ; IMMEDIATE
 
- :  <= 1+ < ;
- :  >= 1 - > ;
+:  <= 1+ < ;
+:  >= 1 - > ;
 
 : BL 32 ;
 
@@ -91,22 +91,22 @@ HERE 999 ! LAST 998 !
 : NAME>HEAD 3 - ;
 : BODY>HEAD 1+ @ ;
 
-: .fl.  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
-
-break;
-
-: .fw ( addr1 -- word-addr|0 ) LAST 
-	10000 0 DO
-		2DUP HEAD>NAME strcmp
-		IF SWAP DROP LEAVE 
-		ELSE DUP 0 =
-			IF DROP DROP 0 LEAVE ELSE @ THEN
+: .fw. ( addr1 -- word-addr|0 ) LAST 
+	BEGIN
+		DUP MEM_LAST = IF 
+			DROP DROP 0 EXIT
 		THEN
-	LOOP ;
 
-: FIND-WORD .word. PAD .fw ;
+		2DUP HEAD>NAME strcmp
+		IF SWAP DROP EXIT THEN
+
+		DUP @ +
+	REPEAT
+	;
+
+: FIND-WORD .word. PAD .fw. ;
 : ' FIND-WORD DUP IF HEAD>BODY THEN ;
-: EXECUTE ?DUP IF >R THEN ;
+: EXECUTE ( addr -- ) ?DUP IF >R THEN ;
 
 : FILL ( addr n b -- ) ROT ROT OVER + SWAP DO DUP I ! LOOP DROP ;
 : ERASE ( addr n -- ) 0 FILL ;
@@ -114,3 +114,19 @@ break;
 : :NONAME ( -- code-addr ) HERE ] ;
 : NONAME; ?] IF 99 , 0 STATE ! THEN ; IMMEDIATE
 ( Usage: :NONAME 1 2 3 + + . NONAME; )
+
+: .fl.  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
+
+: .wordcount. ( -- n ) 0 LAST
+	BEGIN
+		DUP MEM_LAST = IF 
+			DROP EXIT
+		THEN
+
+		SWAP 1+ SWAP
+
+		DUP @ +
+	REPEAT
+	;
+
+break;
