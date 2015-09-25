@@ -1339,8 +1339,8 @@ int ForthOS::ParseInput(LPCTSTR commands)
 	}
 
 	// at end of the inputStream
-	if (userMode)
-		AppendOutput(_T(" ok"));
+	//if (userMode)
+		//AppendOutput(_T(" ok"));
 	return toIN;
 }
 
@@ -1371,7 +1371,7 @@ void ForthOS::BootStrap_FILE()
 		fclose(fp);
 	}
 	userMode = true;
-	AppendOutput(_T(" ok"));
+	//AppendOutput(_T(" ok"));
 }
 
 
