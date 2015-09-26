@@ -6,6 +6,7 @@ ForthOS::ForthOS(int memSize)
 {
 	SP = CSP = IP = RSP = 0;
 	memorySize = memSize;
+	output_fp = NULL;
 
 #ifdef _DEBUG
 	memSize = MEMORY_SIZE;
@@ -16,7 +17,6 @@ ForthOS::ForthOS(int memSize)
 	memset(memory, 0, memorySize * sizeof(int));
 #endif
 
-	userMode = true;
 	memset(stack, 0, STACK_SIZE * sizeof(int));
 	memset(cstack, 0, CSTACK_SIZE * sizeof(int));
 	memset(rstack, 0, RSTACK_SIZE * sizeof(int));
@@ -24,7 +24,34 @@ ForthOS::ForthOS(int memSize)
 
 ForthOS::~ForthOS()
 {
+#ifndef _DEBUG
 	free(memory);
+#endif
+}
+
+int ForthOS::PUSH(int val) 
+{
+	if (SP >= STACK_SIZE)
+	{
+		SP = 0;
+		MemSet(DEPTH_ADDRESS, SP);
+		throw CString(_T("Stack full."));
+	}
+	stack[SP++] = val; 
+	MemSet(DEPTH_ADDRESS, SP);
+	return val;
+}
+
+int ForthOS::POP() // { return (SP > 0) ? stack[--SP] : 0; }
+{
+	if (SP < 1)
+	{
+		SP = 0;
+		MemSet(DEPTH_ADDRESS, SP);
+		throw CString(_T("Stack empty."));
+	}
+	MemSet(DEPTH_ADDRESS, --SP);
+	return stack[SP];
 }
 
 int ForthOS::COMMA(int val)
@@ -175,24 +202,32 @@ int ForthOS::DoExecute()
 
 		case I_I:
 			cse = CPOP(); // Push the index
+			if (cse == NULL)
+				throw "invalid DO construct.";
 			CPUSH();
 			PUSH(cse->loop_index);
 			break;
 
 		case I_LEAVE:
 			cse = CPOP(); // Set Limit = Index
+			if (cse == NULL)
+				throw "invalid DO construct.";
 			cse = CPUSH();
 			cse->loop_limit = cse->loop_index;
 			break;
 
 		case I_PLUSLOOP:
 			cse = CPOP(); // Index
+			if (cse == NULL)
+				throw "invalid DO construct.";
 			CPUSH();
 			cse->loop_increment = POP();
 			// No break, fall through
 
 		case I_LOOP:
 			cse = CPOP(); // Index
+			if (cse == NULL)
+				throw "invalid DO construct.";
 			if (cse->loop_increment == 0)
 			{
 				throw "invalid LOOP increment.";
@@ -283,26 +318,22 @@ int ForthOS::DoExecute()
 			}
 			break;
 
-		case I_TYPE:
-			val = POP(); // count
-			addr = POP(); // start addr
-			{
-				CString x;
-				for (int i = 0; i < val; i++)
-				{
-					x.AppendChar(MemGet(addr++));
-				}
-				AppendOutput(x);
-			}
-			break;
+		//case I_TYPE:
+		//	val = POP(); // count
+		//	addr = POP(); // start addr
+		//	{
+		//		CString x;
+		//		for (int i = 0; i < val; i++)
+		//		{
+		//			x.AppendChar(MemGet(addr++));
+		//		}
+		//		AppendOutput(x);
+		//	}
+		//	break;
 
 		case I_EMIT:
 			val = POP();
-			{
-				CString x;
-				x.AppendChar((CHAR) val);
-				AppendOutput(x);
-			}
+			AppendOutput((CHAR)val);
 			break;
 
 		case I_TO_R: // >R
@@ -427,8 +458,7 @@ void ForthOS::BootStrap()
 
 	// Built-In WORD: PAD
 	xt = Compile(MODE_BOOT,
-		I_LITERAL, LAST_ADDRESS, I_FETCH,
-		I_LITERAL, 100, I_MINUS,
+		I_LITERAL, PAD_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 	int xtPad = Create(StringToMem(INPUT_BUFFER, _T("PAD")), FLAG_IS_NORMAL, xt);
 
@@ -576,22 +606,22 @@ void ForthOS::BootStrap()
 	Create(StringToMem(INPUT_BUFFER, _T("BASE")), FLAG_IS_NORMAL, xt);
 
 	// TYPE
-	xt = Compile(MODE_BOOT,
-		I_TYPE,
-		I_RETURN, COMPILE_BREAK);
-	Create(StringToMem(INPUT_BUFFER, _T("TYPE")), FLAG_IS_NORMAL, xt);
+	//xt = Compile(MODE_BOOT,
+	//	I_TYPE,
+	//	I_RETURN, COMPILE_BREAK);
+	//Create(StringToMem(INPUT_BUFFER, _T("TYPE")), FLAG_IS_NORMAL, xt);
 
 	// . (DOT)
-	xt = Compile(MODE_BOOT,
-		I_DOT,
-		I_RETURN, COMPILE_BREAK);
-	Create(StringToMem(INPUT_BUFFER, _T(".")), FLAG_IS_NORMAL, xt);
+	//xt = Compile(MODE_BOOT,
+	//	I_DOT,
+	//	I_RETURN, COMPILE_BREAK);
+	//Create(StringToMem(INPUT_BUFFER, _T(".")), FLAG_IS_NORMAL, xt);
 
 	// EMIT
-	xt = Compile(MODE_BOOT,
-		I_EMIT,
-		I_RETURN, COMPILE_BREAK);
-	Create(StringToMem(INPUT_BUFFER, _T("EMIT")), FLAG_IS_NORMAL, xt);
+	//xt = Compile(MODE_BOOT,
+	//	I_EMIT,
+	//	I_RETURN, COMPILE_BREAK);
+	//Create(StringToMem(INPUT_BUFFER, _T("EMIT")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: DUP
 	xt = Compile(MODE_BOOT,
@@ -697,6 +727,12 @@ void ForthOS::BootStrap()
 		I_LITERAL, MEMLAST_ADDRESS, I_FETCH,
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("MEM_LAST")), FLAG_IS_NORMAL, xt);
+
+	// Built-In WORD: DEPTH ( -- n )
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, DEPTH_ADDRESS, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
+	Create(StringToMem(INPUT_BUFFER, _T("DEPTH")), FLAG_IS_NORMAL, xt);
 }
 
 void ForthOS::ResolveCall(CString& ret, int addr)
@@ -862,9 +898,9 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_DOT"));
 		break;
 
-	case I_TYPE:
-		ret.AppendFormat(_T("I_TYPE"));
-		break;
+	//case I_TYPE:
+	//	ret.AppendFormat(_T("I_TYPE"));
+	//	break;
 
 	case I_EMIT:
 		ret.AppendFormat(_T("I_EMIT"));
@@ -1041,7 +1077,18 @@ void ForthOS::Dump(CString& ret)
 
 void ForthOS::AppendOutput(LPCTSTR text)
 {
-	output.Append(text);
+	if ( output_fp != NULL )
+		fputws(text, output_fp);
+	else
+		output.Append(text);
+}
+
+void ForthOS::AppendOutput(CHAR ch)
+{
+	if ( output_fp != NULL )
+		fputc(ch, output_fp);
+	else
+		output.AppendChar(ch);
 }
 
 int ForthOS::CompareStrings(int addr1, int addr2)
@@ -1339,39 +1386,44 @@ int ForthOS::ParseInput(LPCTSTR commands)
 	}
 
 	// at end of the inputStream
-	//if (userMode)
-		//AppendOutput(_T(" ok"));
 	return toIN;
 }
 
 
 void ForthOS::BootStrap_FILE()
 {
-	userMode = false;
-	CString cmds;
+	if (!Include("BootStrap.4th"))
+		Include("..\\BootStrap.4th");
+}
+
+
+bool ForthOS::Include(char *fileName)
+{
+	CString line;
 	FILE *fp = NULL;
-	fopen_s(&fp, "BootStrap.4th", "rt");
-	if (fp)
+	fopen_s(&fp, fileName, "rt");
+	if (fp == NULL)
 	{
-		int i = 0;
-		char buf[256];
-		while (fgets(buf, sizeof(buf), fp) == buf)
-		{
-			cmds = buf;
-			cmds.TrimRight();
-			if (cmds.CompareNoCase(_T("break;")) == 0)
-			{
-				break;
-			}
-			else
-			{
-				ParseInput(cmds);
-			}
-		}
-		fclose(fp);
+		return false;
 	}
-	userMode = true;
-	//AppendOutput(_T(" ok"));
+
+	int i = 0;
+	char buf[256];
+	while (fgets(buf, sizeof(buf), fp) == buf)
+	{
+		line = buf;
+		line.TrimRight();
+		if (line.CompareNoCase(_T("break;")) == 0)
+		{
+			break;
+		}
+		else
+		{
+			ParseInput(line);
+		}
+	}
+	fclose(fp);
+	return true;
 }
 
 
@@ -1413,6 +1465,11 @@ void ForthOS::ExecuteWord(int PAD)
 {
 	CString name;
 	MemToString(PAD, name);
+
+	if (name.CompareNoCase(_T("')'")) == 0)
+	{
+		int xxx = 0;
+	}
 
 	if (MemGet(PAD) == 0)
 		return;

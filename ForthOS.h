@@ -12,8 +12,11 @@
 #define SOURCE_ADDRESS 5 // Points to the current input buffer
 #define TOIN_ADDRESS 6 // >IN
 #define	MEMLAST_ADDRESS 7
-#define TEMP_REG1 8
-#define TEMP_REG2 9
+#define DEPTH_ADDRESS 8
+
+#define PAD_ADDRESS 800
+#define TEMP_REG1 990
+#define TEMP_REG2 991
 
 // #define PAD_ADDRESS 950 // PAD
 #define INPUT_BUFFER 21 // typed commands go here
@@ -75,7 +78,7 @@ class ForthOS
 	int xtDComma; // Address of runtime code for D,
 	//int xtPAD; // Address of runtime code for PAD
 	int xtCreate; // Address of runtime code for CREATE
-	bool userMode;
+	FILE *output_fp;
 
 	int DoExecute();
 
@@ -88,8 +91,8 @@ class ForthOS
 
 	// Data stack
 	int SP, stack[STACK_SIZE];
-	int PUSH(int val) { if (SP < STACK_SIZE) stack[SP++] = val; return val; }
-	int POP() { return (SP > 0) ? stack[--SP] : 0; }
+	int PUSH(int val);
+	int POP();
 
 	// Conditional stack
 	int CSP;
@@ -108,7 +111,7 @@ class ForthOS
 		if (addr < memorySize)
 			return memory[addr];
 		else
-			throw CString("out of bounds.");
+			throw CString("memory access of bounds.");
 	}
 
 	void MemSet(int addr, int val)
@@ -116,7 +119,7 @@ class ForthOS
 		if (addr < memorySize)
 			memory[addr] = val;
 		else
-			throw CString("out of bounds.");
+			throw CString("memory access of bounds.");
 	}
 
 	int COMMA(int val);
@@ -148,6 +151,7 @@ class ForthOS
 
 	int ParseInput(LPCTSTR commands);
 	void AppendOutput(LPCTSTR text);
+	void AppendOutput(CHAR ch);
 	void Dump(CString& ret);
 	void DumpStack(CString& ret);
 	int DumpInstr(int xt, CString& ret);
@@ -157,6 +161,7 @@ class ForthOS
 	void Save();
 	void BootStrap();
 	void BootStrap_FILE();
+	bool Include(char *fileName);
 
 	int EXECUTE(int xt);
 	void ExecuteWord(int startAddr);

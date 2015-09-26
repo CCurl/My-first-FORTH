@@ -44,7 +44,7 @@ typedef enum {
 	I_PLUSLOOP,
 	I_GOTO,
 	I_DOT,
-	I_TYPE,
+	I_UNUSED1,
 	I_CALL, 
 	I_OVER,
 	I_EMIT,

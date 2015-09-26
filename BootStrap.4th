@@ -1,4 +1,5 @@
 HERE 999 ! LAST 998 !
+: .**********************. ;
 : .bsr 999 @ (HERE) ! 998 @ (LAST) ! ;
 
 : IMMEDIATE 1 LAST 1 + ! ;
@@ -26,14 +27,18 @@ HERE 999 ! LAST 998 !
 : LEAVE ?] IF 24 , ELSE [ 24 , ] THEN ; IMMEDIATE
 : LOOP  ?] IF 25 , ELSE [ 25 , ] THEN ; IMMEDIATE
 : +LOOP ?] IF 26 , ELSE [ 26 , ] THEN ; IMMEDIATE
+: .     ?] IF 28 , ELSE [ 28 , ] THEN ; IMMEDIATE
+: EMIT  ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
 : OVER  ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE
 : 1-    ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE
 : 0=    ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE
 : 2+    ?] IF  9 , 9 , ELSE 1+ 1+ THEN ; IMMEDIATE
 
-: BEGIN  ?] IF HERE   THEN ; IMMEDIATE
-: EXIT   ?] IF 99 ,   THEN ; IMMEDIATE
+: BEGIN  ?] IF HERE   THEN ; IMMEDIATE 
+: EXIT   ?] IF 99 ,   THEN ; IMMEDIATE 
 : REPEAT ?] IF 27 , , THEN ; IMMEDIATE
+
+: TYPE 0 DO DUP @ EMIT 1+ LOOP DROP ;
 
 :  <= 1+ < ;
 :  >= 1 - > ;
@@ -47,6 +52,7 @@ HERE 999 ! LAST 998 !
 
 : ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 2+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
 ( : ." SOURCE >IN @ DO DUP I + @ '"' = IF DROP I 2+ >IN ! LEAVE ELSE DUP I + @ EMIT THEN LOOP ; IMMEDIATE )
+
 : VAR CREATE 33 , LAST , 3 , HERE 2+ , 99 , 0 , ;
 : ALLOT 0 DO 0 , LOOP ;
 
@@ -115,8 +121,6 @@ HERE 999 ! LAST 998 !
 : NONAME; ?] IF 99 , 0 STATE ! THEN ; IMMEDIATE
 ( Usage: :NONAME 1 2 3 + + . NONAME; )
 
-: .fl.  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
-
 : .wordcount. ( -- n ) 0 LAST
 	BEGIN
 		DUP MEM_LAST = IF 
@@ -131,5 +135,54 @@ HERE 999 ! LAST 998 !
 
 : .dictsize. MEM_LAST LAST - . ;
 : .codesize. HERE 1001 - . ;
+: .S DEPTH . '-' EMIT .BL DEPTH IF -1 DEPTH 1- 1- DO I PICK . -1 +LOOP THEN ;
+: ABS DUP 0 < IF 0 SWAP - THEN ;
+: NEGATE 0 SWAP - ;
+
+: .dict. ( -- n ) LAST
+	BEGIN
+		DUP MEM_LAST = IF 
+			DROP EXIT
+		THEN
+		DUP . DUP HEAD>NAME COUNT TYPE .BL DUP HEAD>BODY . .CR 
+		DUP @ +
+	REPEAT
+	;
+
+: .words. ( -- n ) LAST
+	BEGIN
+		DUP MEM_LAST = IF 
+			DROP EXIT
+		THEN
+		
+		DUP HEAD>NAME COUNT TYPE .BL
+		DUP @ +
+	REPEAT
+	;
+
+: .collect. ( addr delim -- )
+	>R DUP strclr
+	SOURCE >IN @ 1+
+	DO DUP I + @ DUP R@ = 
+		IF 
+			DROP DROP I 1+ >IN ! LEAVE 
+		ELSE
+			2 PICK str+ 
+		THEN 
+	LOOP
+	R> DROP DROP
+	;
+
+: ." PAD '"' .collect. ?] 
+	IF 
+	  3 , HERE 0 , 30 , [ 3 , ' COUNT , ] , 30 , [ 3 , ' TYPE , ] , 27 , HERE SWAP 0 , HERE SWAP !
+		PAD COUNT DUP , 0 DO DUP @ , 1+ LOOP DROP
+		HERE SWAP !
+	ELSE 
+		PAD [ 30 , ' COUNT , 30 , ' TYPE , ]
+	THEN ; IMMEDIATE
+
+: .fl.  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
 
 break;
+: TYPE  ?] IF 29 , ELSE [ 29 , ] THEN ; IMMEDIATE

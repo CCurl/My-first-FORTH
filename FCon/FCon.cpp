@@ -2,7 +2,10 @@
 //
 
 #include "stdafx.h"
+#include <signal.h>
 #include "FCon.h"
+
+#define IS_CONSOLE
 #include "..\forthos.h"
 
 #ifdef _DEBUG
@@ -26,6 +29,7 @@ void parse()
 	if (myOS == NULL)
 	{
 		myOS = new ForthOS(8192);
+		myOS->output_fp = stdout;
 		myOS->BootStrap();
 	}
 	myOS->ParseInput(CString(line));
@@ -37,7 +41,7 @@ void go()
 	{
 		if (fp == stdin)
 		{
-			fputs("\nFORTH> ", stdout);
+			fputs("\nFORTH>", stdout);
 		}
 		fgets(line, sizeof(line), fp);
 		int len = strlen(line);
@@ -48,15 +52,22 @@ void go()
 		{
 			return;
 		}
-		parse();
-		CString output = myOS->output;
-		if (! myOS->output.IsEmpty())
+
+		if (strcmp(line, "reset") == 0)
 		{
-			CT2A ascii(myOS->output);
-			char *end = NULL;
-			fputs(ascii.m_psz, stdout);
-			myOS->output.Empty();
+			delete myOS;
+			myOS = NULL;
 		}
+
+		parse();
+		//CString output = myOS->output;
+		//if (! myOS->output.IsEmpty())
+		//{
+		//	CT2A ascii(myOS->output);
+		//	char *end = NULL;
+		//	fputs(ascii.m_psz, stdout);
+		//	myOS->output.Empty();
+		//}
 		if (fp == stdin)
 		{
 			fputs(" ok", stdout);
@@ -64,10 +75,16 @@ void go()
 	}
 }
 
+void SigInt_Handler(int action)
+{
+	fprintf(stdout, "Signal %d caught", action);
+}
+
 int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 {
 	int nRetCode = 0;
 	HMODULE hModule = ::GetModuleHandle(NULL);
+
 
 	if (hModule != NULL)
 	{
@@ -80,14 +97,16 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		}
 		else
 		{
+			signal(SIGABRT, SigInt_Handler);
+			signal(SIGBREAK, SigInt_Handler);
+			signal(SIGTERM, SigInt_Handler);
+			signal(SIGINT, SigInt_Handler);
 			fp = stdin;
 			go();
-			// TODO: code your application's behavior here.
 		}
 	}
 	else
 	{
-		// TODO: change error code to suit your needs
 		_tprintf(_T("Fatal Error: GetModuleHandle failed\n"));
 		nRetCode = 1;
 	}
