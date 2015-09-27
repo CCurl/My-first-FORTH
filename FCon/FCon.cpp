@@ -44,12 +44,12 @@ void go()
 			return;
 		}
 
-		if (input.CompareNoCase(_T("reset")) == 0)
+		if (input.CompareNoCase(_T("restart")) == 0)
 		{
 			delete myOS;
 			myOS = NULL;
-			line[0] = (char)NULL;
-			len = 0;
+			strcpy_s(line, sizeof(line), ".bs");
+			len = 3;
 		}
 
 		if (myOS == NULL)

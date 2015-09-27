@@ -588,7 +588,7 @@ void ForthOS::BootStrap()
 	Create(StringToMem(INPUT_BUFFER, _T("STATE")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: TIB
-	xt = Compile(MODE_BOOT,
+	xt = Compile(MODE_BOOTIF,
 		I_LITERAL, INPUT_BUFFER,
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("TIB")), FLAG_IS_NORMAL, xt);
@@ -604,24 +604,6 @@ void ForthOS::BootStrap()
 		I_LITERAL, BASE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("BASE")), FLAG_IS_NORMAL, xt);
-
-	// TYPE
-	//xt = Compile(MODE_BOOT,
-	//	I_TYPE,
-	//	I_RETURN, COMPILE_BREAK);
-	//Create(StringToMem(INPUT_BUFFER, _T("TYPE")), FLAG_IS_NORMAL, xt);
-
-	// . (DOT)
-	//xt = Compile(MODE_BOOT,
-	//	I_DOT,
-	//	I_RETURN, COMPILE_BREAK);
-	//Create(StringToMem(INPUT_BUFFER, _T(".")), FLAG_IS_NORMAL, xt);
-
-	// EMIT
-	//xt = Compile(MODE_BOOT,
-	//	I_EMIT,
-	//	I_RETURN, COMPILE_BREAK);
-	//Create(StringToMem(INPUT_BUFFER, _T("EMIT")), FLAG_IS_NORMAL, xt);
 
 	// Built-In WORD: DUP
 	xt = Compile(MODE_BOOT,
@@ -657,17 +639,12 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("!")), FLAG_IS_IMMEDIATE, xt);
 
-	// Built-In WORD: +
-	// : + STATE @ IF 10 , ELSE [ 10 , ] THEN ; IMMEDIATE
+	// : IMMEDIATE 1 LAST 1+ ! ;
 	xt = Compile(MODE_BOOT,
-		I_LITERAL, STATE_ADDRESS, I_FETCH,
-		I_IF_RT, 5,
-		I_LITERAL, I_PLUS,
-		I_CALL, xtComma,
-		I_RETURN,
-		I_PLUS,
+		I_LITERAL, 1, I_LITERAL, LAST_ADDRESS, I_FETCH,
+		I_ONEPLUS, I_STORE,
 		I_RETURN, COMPILE_BREAK);
-	Create(StringToMem(INPUT_BUFFER, _T("+")), FLAG_IS_IMMEDIATE, xt);
+	Create(StringToMem(INPUT_BUFFER, _T("IMMEDIATE")), FLAG_IS_IMMEDIATE, xt);
 
 	// Built-In WORD: (LAST)
 	xt = Compile(MODE_BOOT,
@@ -1373,6 +1350,8 @@ int ForthOS::ParseInput(LPCTSTR commands)
 		{
 			GetNextWord(PAD);
 			ExecuteWord(PAD);
+			source = MemGet(SOURCE_ADDRESS);
+			len = MemGet(source++);
 			toIN = MemGet(TOIN_ADDRESS);
 		}
 	}
@@ -1401,16 +1380,23 @@ int ForthOS::ParseInput(LPCTSTR commands)
 
 void ForthOS::BootStrap_FILE()
 {
-	if (!Include("BootStrap.4th"))
-		Include("..\\BootStrap.4th");
+	int pad = StringToMem(700, CString("BootStrap.4th"));
+	if (!Include(pad))
+	{
+		pad = StringToMem(700, CString("..\\BootStrap.4th"));
+		Include(pad);
+	}
 }
 
 
-bool ForthOS::Include(char *fileName)
+bool ForthOS::Include(int pad)
 {
 	CString line;
 	FILE *fp = NULL;
-	fopen_s(&fp, fileName, "rt");
+
+	MemToString(pad, line);
+	CT2A ascii(line);
+	fopen_s(&fp, ascii.m_psz, "rt");
 	if (fp == NULL)
 	{
 		return false;
@@ -1475,9 +1461,11 @@ void ForthOS::ExecuteWord(int PAD)
 	CString name;
 	MemToString(PAD, name);
 
-	if (name.CompareNoCase(_T("')'")) == 0)
+	if (name.CompareNoCase(_T("include")) == 0)
 	{
-		int xxx = 0;
+		GetNextWord(PAD);
+		Include(PAD);
+		return;
 	}
 
 	if (MemGet(PAD) == 0)

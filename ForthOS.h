@@ -161,7 +161,7 @@ class ForthOS
 	void Save();
 	void BootStrap();
 	void BootStrap_FILE();
-	bool Include(char *fileName);
+	bool Include(int PAD);
 
 	int EXECUTE(int xt);
 	void ExecuteWord(int startAddr);

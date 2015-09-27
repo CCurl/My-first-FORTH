@@ -142,14 +142,24 @@ void CForthDlg::OnBnClickedOk()
 		EndDialog(IDOK);
 		return;
 	}
+
+	if (commands.CompareNoCase(_T("reset")) == 0)
+	{
+		delete myOS;
+		myOS = NULL;
+		commands.Empty();
+	}
+
 	if (myOS == NULL)
 	{
 		myOS = new ForthOS(this->memSize);
 		myOS->BootStrap();
 	}
+	
 	myOS->ParseInput(commands);
 
 	output = myOS->output;
+	output.Append(_T(" ok"));
 	myOS->output.Empty();
 	myOS->Dump(memDump);
 	myOS->DumpStack(stack);
