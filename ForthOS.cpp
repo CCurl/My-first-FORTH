@@ -1091,6 +1091,13 @@ void ForthOS::AppendOutput(CHAR ch)
 		output.AppendChar(ch);
 }
 
+int to_upper(int c)
+{
+	if (('a' <= c) && (c <= 'z'))
+		return c - 32;
+	return c;
+}
+
 int ForthOS::CompareStrings(int addr1, int addr2)
 {
 	int len1 = MemGet(addr1);
@@ -1099,7 +1106,9 @@ int ForthOS::CompareStrings(int addr1, int addr2)
 	{
 		for (int i = 1; i <= len1; i++)
 		{
-			if (MemGet(addr1 + i) != MemGet(addr2 + i))
+			int c1 = MemGet(addr1 + i);
+			int c2 = MemGet(addr2 + i);
+			if (to_upper(c1) != to_upper(c2))
 				return 0;
 		}
 		return 1;

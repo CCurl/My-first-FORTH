@@ -23,18 +23,6 @@ FILE *fp = NULL;
 char line[128];
 ForthOS *myOS = NULL;
 
-
-void parse()
-{
-	if (myOS == NULL)
-	{
-		myOS = new ForthOS(8192);
-		myOS->output_fp = stdout;
-		myOS->BootStrap();
-	}
-	myOS->ParseInput(CString(line));
-}
-
 void go()
 {
 	while (true)
@@ -46,28 +34,41 @@ void go()
 		fgets(line, sizeof(line), fp);
 		int len = strlen(line);
 		if (line[len - 1] == '\n')
+		{
 			line[--len] = (char)NULL;
+		}
 
-		if (strcmp(line, "bye") == 0)
+		CString input(line);
+		if (input.CompareNoCase(_T("bye")) == 0)
 		{
 			return;
 		}
 
-		if (strcmp(line, "reset") == 0)
+		if (input.CompareNoCase(_T("reset")) == 0)
 		{
 			delete myOS;
 			myOS = NULL;
+			line[0] = (char)NULL;
+			len = 0;
 		}
 
-		parse();
-		//CString output = myOS->output;
-		//if (! myOS->output.IsEmpty())
-		//{
-		//	CT2A ascii(myOS->output);
-		//	char *end = NULL;
-		//	fputs(ascii.m_psz, stdout);
-		//	myOS->output.Empty();
-		//}
+		if (myOS == NULL)
+		{
+			myOS = new ForthOS(MEMORY_SIZE);
+			myOS->output_fp = stdout;
+			myOS->BootStrap();
+		}
+
+		if (input.CompareNoCase(_T("dump")) == 0)
+		{
+			CString ret;
+			myOS->Dump(ret);
+			fputws(ret, stdout);
+			continue;
+		}
+
+		myOS->ParseInput(CString(line));
+
 		if (fp == stdin)
 		{
 			fputs(" ok", stdout);
