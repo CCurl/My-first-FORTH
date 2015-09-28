@@ -8,15 +8,15 @@ HERE 999 ! LAST 998 !
 
 : + ?] IF 10 , ELSE [ 10 , ] THEN ; IMMEDIATE
 
-: // SOURCE + >IN ! ; 
+: \ SOURCE + >IN ! ; 
 
-// Primitives ... macro-assembler building blocks ...
+\ Primitives ... macro-assembler building blocks ...
 : SWAP   ?] IF  5 , ELSE [  5 , ] THEN ; IMMEDIATE
 : DROP   ?] IF  6 , ELSE [  6 , ] THEN ; IMMEDIATE
 : PICK   ?] IF  7 , ELSE [  7 , ] THEN ; IMMEDIATE
 : ROT    ?] IF  8 , ELSE [  8 , ] THEN ; IMMEDIATE
-: 1+     ?] IF  9 , ELSE [  9 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
-//             10 (+) was needed earlier
+: 1+     ?] IF  9 , ELSE [  9 , ] THEN ; IMMEDIATE \ not required as an opcode, for performance
+\              10 (+) was needed earlier
 : -      ?] IF 11 , ELSE [ 11 , ] THEN ; IMMEDIATE
 : *      ?] IF 12 , ELSE [ 12 , ] THEN ; IMMEDIATE
 : /      ?] IF 13 , ELSE [ 13 , ] THEN ; IMMEDIATE
@@ -27,27 +27,30 @@ HERE 999 ! LAST 998 !
 : >R     ?] IF 18 , ELSE [ 18 , ] THEN ; IMMEDIATE
 : R>     ?] IF 19 , ELSE [ 19 , ] THEN ; IMMEDIATE
 : R@     ?] IF 20 , ELSE [ 20 , ] THEN ; IMMEDIATE
-//             21 is the IF runtime logic
+\              21 is the IF runtime logic
 : DO     ?] IF 22 , ELSE [ 22 , ] THEN ; IMMEDIATE
 : I      ?] IF 23 , ELSE [ 23 , ] THEN ; IMMEDIATE
 : LEAVE  ?] IF 24 , ELSE [ 24 , ] THEN ; IMMEDIATE
 : LOOP   ?] IF 25 , ELSE [ 25 , ] THEN ; IMMEDIATE
 : +LOOP  ?] IF 26 , ELSE [ 26 , ] THEN ; IMMEDIATE
-: BEGIN  ?] IF HERE THEN ; IMMEDIATE // No opcode needed for this
+: BEGIN  ?] IF HERE THEN ; IMMEDIATE \ No opcode needed for this
 : REPEAT ?] IF 27 , , THEN ; IMMEDIATE
 : .      ?] IF 28 , ELSE [ 28 , ] THEN ; IMMEDIATE
-//             29 used to be TYPE, now it is obsolete
-//             30 is CALL
-: OVER   ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
+\              29 used to be TYPE, now it is obsolete
+\              30 is CALL
+: OVER   ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE \ not required as an opcode, for performance
 : EMIT   ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
-//             33 is DICTP, a NOOP to skip over the dictionary entry back pointer
-: 1-     ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
-: 0=     ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
+\              33 is DICTP, a NOOP to skip over the dictionary entry back pointer
+: 1-     ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE \ not required as an opcode, for performance
+: 0=     ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE \ not required as an opcode, for performance
 : EXIT   ?] IF 99 , THEN ; IMMEDIATE 
 
-: 2+     ?] IF  9 , 9 , ELSE 1+ 1+ THEN ; IMMEDIATE
-:  <= 1+ < ;
-:  >= 1 - > ;
+: <= 1+ < ;
+: >= 1- > ;
+: 2* 2 * ;
+: 2/ 2 / ;
+: 2+ 1+ 1+ ;
+
 : NIP SWAP DROP ;
 : TUCK SWAP OVER ;
 : -ROT ROT ROT ;
@@ -58,19 +61,19 @@ HERE 999 ! LAST 998 !
 : 2DUP OVER OVER ;
 : ?DUP DUP IF DUP THEN ;
 
-// string stuff
+\ string stuff
 : TYPE 0 DO DUP @ EMIT 1+ LOOP DROP ;
 
-: STR+ DUP .INC. DUP @ + ! ;      // ( C ADDR -- ) 
-: STRCLR 0 SWAP ! ;               // ( ADDR -- ) 
+: STR+ DUP .INC. DUP @ + ! ;      \ ( C ADDR -- ) 
+: STRCLR 0 SWAP ! ;               \ ( ADDR -- ) 
 
-// ( from-addr to-addr -- ) 
+\ ( from-addr to-addr -- ) 
 : STRCAT SWAP COUNT 0 DO 
 		DUP @ 2 PICK STR+ 1+
 	LOOP 2DROP
 	;
 
-//	( from-addr to-addr -- )
+\	( from-addr to-addr -- )
 : STRCPY DUP STRCLR STRCAT ;
 
 : BL 32 ;
@@ -85,14 +88,14 @@ HERE 999 ! LAST 998 !
 : VARIABLE CREATE 33 , LAST , 3 , HERE 2+ , 99 , 0 , ;
 : ALLOT 0 DO 0 , LOOP ;
 
-// ( n -- q r )
+\ ( n -- q r )
 : /MOD DUP BASE @ / DUP BASE @ * ROT SWAP - ;
 
 : .BL BL EMIT ;
 : .CR 13 EMIT 10 EMIT ;
 
-// Case sensitve string compare
-// ( addr1 addr2 -- bool ) 
+\ Case sensitve string compare
+\ ( addr1 addr2 -- bool ) 
 : strcmp 2DUP @ SWAP @ =
 	IF
 		-1 >R
@@ -111,13 +114,13 @@ HERE 999 ! LAST 998 !
 		0
 	THEN ;
 
-// ( c min max -- bool )
+\ ( c min max -- bool )
 : BETWEEN 2 PICK >= >R >= R> = ;
 
-// ( C -- c )
+\ ( C -- c )
 : TO-UPPER DUP 'a' 'z' BETWEEN IF 32 - THEN ;
 
-// Case insensitve string compare
+\ Case insensitve string compare
 : STRCMPI ( ADDR1 ADDR2 -- BOOL ) 2DUP @ SWAP @ =
 	IF
 		-1 >R
