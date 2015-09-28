@@ -61,6 +61,8 @@ HERE 999 ! LAST 998 !
 : 2DUP OVER OVER ;
 : ?DUP DUP IF DUP THEN ;
 
+: mod 2dup / * - ;
+
 \ string stuff
 : TYPE 0 DO DUP @ EMIT 1+ LOOP DROP ;
 
@@ -85,8 +87,11 @@ HERE 999 ! LAST 998 !
 
 : ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 1+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
 
-: VARIABLE CREATE 33 , LAST , 3 , HERE 2+ , 99 , 0 , ;
+\ ( c min max -- bool )
+: BETWEEN 2 PICK >= >R >= R> = ;
+
 : ALLOT 0 DO 0 , LOOP ;
+: VARIABLE CREATE 33 , LAST , 3 , HERE 2+ , 99 , 1 ALLOT ;
 
 \ ( n -- q r )
 : /MOD DUP BASE @ / DUP BASE @ * ROT SWAP - ;
@@ -113,9 +118,6 @@ HERE 999 ! LAST 998 !
 		2DROP
 		0
 	THEN ;
-
-\ ( c min max -- bool )
-: BETWEEN 2 PICK >= >R >= R> = ;
 
 \ ( C -- c )
 : TO-UPPER DUP 'a' 'z' BETWEEN IF 32 - THEN ;
@@ -227,15 +229,18 @@ HERE 999 ! LAST 998 !
 		PAD [ 30 , ' COUNT , 30 , ' TYPE , ]
 	THEN ; IMMEDIATE
 
+\ Arrays return the starting address and size of the array.
+\ indexes go from 1 to n (base 1)
+\ no range checking included yet, soon to come
+\ 10 array test    ... 
+\ 12 3 test >array ... store 12 in position 3
+\ 3 test array>    ... fetch value at position 3 on the stack (12)
+: Array.Check.Bounds 2 pick swap 1 swap between if -1 else ." out of array bounds." 0 then ;
+: ARRAY CREATE 33 , LAST , 3 , HERE 4 + , 3 , dup , 99 , ALLOT ;
+: >ARRAY Array.Check.Bounds if 1- + ! else 2drop then ;      \ ( val pos start count -- )
+: ARRAY> Array.Check.Bounds if 1- + @ else 2drop then ;      \ ( pos start count -- val )
+
 : forget find-word ?dup if dup HEAD>BODY (HERE) ! DUP @ + (LAST) ! then ;
 : forget.last  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
-
-: num-vectors 20 ;
-VARIABLE vectors num-vectors 1- ALLOT
-: !vector vectors + ! ;
-: @vector vectors + @ ;
-: >vector @vector EXECUTE ;
-: .vector @vector ?DUP IF BODY>HEAD HEAD>NAME COUNT TYPE ELSE ." null." THEN ;
-: .vectors num-vectors 0 DO I . '-' EMIT .BL I .vector .CR LOOP ;
 
 break;

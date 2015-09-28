@@ -6,7 +6,7 @@ ForthOS::ForthOS(int memSize)
 {
 	SP = CSP = IP = RSP = 0;
 	memorySize = memSize;
-	output_fp = NULL;
+	input_fp = output_fp = NULL;
 
 #ifdef _DEBUG
 	memSize = MEMORY_SIZE;

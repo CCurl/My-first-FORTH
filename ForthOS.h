@@ -78,7 +78,7 @@ class ForthOS
 	int xtDComma; // Address of runtime code for D,
 	//int xtPAD; // Address of runtime code for PAD
 	int xtCreate; // Address of runtime code for CREATE
-	FILE *output_fp;
+	FILE *input_fp, *output_fp;
 
 	int DoExecute();
 
