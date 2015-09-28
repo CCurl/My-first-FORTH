@@ -12,12 +12,13 @@
 : num-vectors 10 ;
 num-vectors ARRAY vectors
 
-: !vector vectors + ! ;
-: @vector vectors + @ ;
-: >vector @vector EXECUTE ;
-: .vector @vector ?DUP IF BODY>HEAD HEAD>NAME COUNT TYPE ELSE ." null." THEN ;
+: >vector vectors >array ;
+: vector> vectors array> ;
+: .vector vector> ?DUP IF BODY>HEAD HEAD>NAME COUNT TYPE ELSE ." null." THEN ;
+: vector.go vector> EXECUTE ;
 : .vectors num-vectors 0 DO I . '-' EMIT .BL I .vector .CR LOOP ;
 
 : t.size 10 ;
 t.size array t
-: t.init t.size 1+ 1 do i i t >array loop ; 
+: t.init t.size 0 do 0 i t >array loop ; 
+

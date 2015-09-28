@@ -1,5 +1,6 @@
+: .bootstrap. ;
+
 HERE 999 ! LAST 998 !
-: .****_Bootstrap_****. ;
 : .bsr 999 @ (HERE) ! 998 @ (LAST) ! ;
 
 : ] 1 STATE ! ;
@@ -90,8 +91,9 @@ HERE 999 ! LAST 998 !
 \ ( c min max -- bool )
 : BETWEEN 2 PICK >= >R >= R> = ;
 
-: ALLOT 0 DO 0 , LOOP ;
-: VARIABLE CREATE 33 , LAST , 3 , HERE 2+ , 99 , 1 ALLOT ;
+: ALLOCATE HERE SWAP 0 DO 0 , LOOP ;
+: ALLOT ALLOCATE DROP ;
+: VARIABLE 1 ALLOCATE CREATE 33 , LAST , 3 , , 99 , ;
 
 \ ( n -- q r )
 : /MOD DUP BASE @ / DUP BASE @ * ROT SWAP - ;
@@ -229,18 +231,28 @@ HERE 999 ! LAST 998 !
 		PAD [ 30 , ' COUNT , 30 , ' TYPE , ]
 	THEN ; IMMEDIATE
 
-\ Arrays return the starting address and size of the array.
-\ indexes go from 1 to n (base 1)
-\ no range checking included yet, soon to come
+\ ********************************************************************************
+\ Arrays return the starting address of the array.
+\ This is a "counted" array, just like strings, so the first cell is the size.
+\ Use COUNT to get the number of elements and address of the first cell.
+\ Indexes go from 0 to n-1 (base 0)
 \ 10 array test    ... 
-\ 12 3 test >array ... store 12 in position 3
-\ 3 test array>    ... fetch value at position 3 on the stack (12)
-: Array.Check.Bounds 2 pick swap 1 swap between if -1 else ." out of array bounds." 0 then ;
-: ARRAY CREATE 33 , LAST , 3 , HERE 4 + , 3 , dup , 99 , ALLOT ;
-: >ARRAY Array.Check.Bounds if 1- + ! else 2drop then ;      \ ( val pos start count -- )
-: ARRAY> Array.Check.Bounds if 1- + @ else 2drop then ;      \ ( pos start count -- val )
+\ 12 3 test >array ... stores 12 in position 3 of array 'test'
+\ 3 test array>    ... fetch value at position 3 from array 'test'
+\ ********************************************************************************
+
+: ARRAY DUP 1+ ALLOCATE TUCK ! CREATE 33 , LAST , 3 , , 99 , ;
+: ARRAY.Check.Bounds COUNT 1- 2 pick swap 0 swap between if -1 else ." index out of bounds." 0 then ;
+: >ARRAY ( val pos array -- ) Array.Check.Bounds if + ! else 2drop then ;
+: ARRAY> ( pos array -- val ) Array.Check.Bounds if + @ else 2drop then ;
+: .ARRAY COUNT 0 DO DUP @ . 1+ LOOP DROP ;
+
+\ ********************************************************************************
 
 : forget find-word ?dup if dup HEAD>BODY (HERE) ! DUP @ + (LAST) ! then ;
 : forget.last  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
+
+: ?free last here - ;
+: .free ?free . ;
 
 break;
