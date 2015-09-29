@@ -44,6 +44,10 @@ HERE 999 ! LAST 998 !
 \              33 is DICTP, a NOOP to skip over the dictionary entry back pointer
 : 1-     ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE \ not required as an opcode, for performance
 : 0=     ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE \ not required as an opcode, for performance
+: fopen  ?] IF 36 , ELSE [ 36 , ] THEN ; IMMEDIATE 
+: fclose ?] IF 37 , ELSE [ 37 , ] THEN ; IMMEDIATE 
+: fread  ?] IF 38 , ELSE [ 38 , ] THEN ; IMMEDIATE 
+: fwrite ?] IF 39 , ELSE [ 39 , ] THEN ; IMMEDIATE 
 : EXIT   ?] IF 99 , THEN ; IMMEDIATE 
 
 : <= 1+ < ;
@@ -222,6 +226,8 @@ HERE 999 ! LAST 998 !
 	R> 2DROP
 	;
 
+: string, dup , 0 do dup @ , 1+ loop drop ;
+
 : ." PAD '"' .collect. ?] 
 	IF 
 	  3 , HERE 0 , 30 , [ 3 , ' COUNT , ] , 30 , [ 3 , ' TYPE , ] , 27 , HERE SWAP 0 , HERE SWAP !
@@ -230,6 +236,16 @@ HERE 999 ! LAST 998 !
 	ELSE 
 		PAD [ 30 , ' COUNT , 30 , ' TYPE , ]
 	THEN ; IMMEDIATE
+
+: " PAD '"' .collect. ?] 
+	IF 
+	  3 , HERE 3 + , 27 , HERE 0 ,
+		PAD COUNT string,
+		HERE SWAP !
+	ELSE 
+		PAD
+	THEN ; IMMEDIATE
+
 
 \ ********************************************************************************
 \ Arrays return the starting address of the array.
