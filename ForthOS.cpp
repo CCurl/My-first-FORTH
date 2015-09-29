@@ -957,6 +957,22 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ResolveCall(ret, addr);
 		break;
 
+	case I_FOPEN:
+		ret.AppendFormat(_T("I_FOPEN"));
+		break;
+
+	case I_FCLOSE:
+		ret.AppendFormat(_T("I_FCLOSE"));
+		break;
+
+	case I_FREAD:
+		ret.AppendFormat(_T("I_FREAD"));
+		break;
+
+	case I_FWRITE:
+		ret.AppendFormat(_T("I_FWRITE"));
+		break;
+
 	default:
 		// Must be a user defined word
 		ret.AppendFormat(_T(".INT %d"), instr);

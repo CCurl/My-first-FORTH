@@ -271,4 +271,11 @@ HERE 999 ! LAST 998 !
 : ?free last here - ;
 : .free ?free . ;
 
+\ FILE stuff
+: fopen.read.text " rt" fopen ;
+: fopen.read.binary " rb" fopen ;
+: fopen.write.text " wt" fopen ;
+: fopen.write.binary " wb" fopen ;
+: fread.line ." fread.line not implemented yet." ;
+
 break;
