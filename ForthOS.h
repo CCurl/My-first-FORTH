@@ -76,7 +76,6 @@ class ForthOS
 
 	int xtComma; // Address of runtime code for ,
 	int xtDComma; // Address of runtime code for D,
-	//int xtPAD; // Address of runtime code for PAD
 	int xtCreate; // Address of runtime code for CREATE
 	FILE *input_fp, *output_fp;
 
@@ -142,12 +141,9 @@ class ForthOS
 		MemSet(addr, len);
 		return addr + len;
 	}
-	//int GetNextWord_OLD(int& toIN, int stopAddr, int copyTo, CString& name);
 	int GetNextWord(int PAD);
 
 	int Create(int name, int imm_flag, int xt);
-	//void CommaCall(int addr) { COMMA(I_CALL);  COMMA(addr); }
-	//void CommaLiteral(int val) { COMMA(I_LITERAL); COMMA(val); }
 
 	int ParseInput(LPCTSTR commands);
 	void AppendOutput(LPCTSTR text);
@@ -162,6 +158,7 @@ class ForthOS
 	void BootStrap();
 	void BootStrap_FILE();
 	bool Include(int PAD);
+	bool Include(FILE *fp);
 
 	int EXECUTE(int xt);
 	void ExecuteWord(int startAddr);

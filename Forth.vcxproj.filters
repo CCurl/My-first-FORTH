@@ -63,8 +63,6 @@
     <None Include="res\Forth.rc2">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="test1.4th" />
-    <None Include="BootStrap.4th" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\Forth.ico">

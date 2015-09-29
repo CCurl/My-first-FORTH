@@ -7,6 +7,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Forth", "Forth.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FCon", "FCon\FCon.vcxproj", "{F63F2A18-84EF-49A8-8FDF-E353D70ED277}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "4th files", "4th files", "{651C94E3-F822-4D1C-A41B-781C1C0D42D8}"
+	ProjectSection(SolutionItems) = preProject
+		BootStrap.4th = BootStrap.4th
+		lists.4th = lists.4th
+		test1.4th = test1.4th
+		vmath.4th = vmath.4th
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32

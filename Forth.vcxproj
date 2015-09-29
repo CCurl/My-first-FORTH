@@ -122,9 +122,7 @@
     <ResourceCompile Include="Forth.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="BootStrap.4th" />
     <None Include="res\Forth.rc2" />
-    <None Include="test1.4th" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\Forth.ico" />

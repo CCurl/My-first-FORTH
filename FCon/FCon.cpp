@@ -152,8 +152,10 @@ int init()
 
 	fp = stdin;
 	myOS = new ForthOS(MEMORY_SIZE);
+
 	myOS->input_fp = stdin;
 	myOS->output_fp = stdout;
+
 	myOS->BootStrap();
 
 	return 0;
