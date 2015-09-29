@@ -51,5 +51,9 @@ typedef enum {
 	I_DICTP, 
 	I_ONEMINUS,
 	I_NOT,
+	I_FOPEN,
+	I_FCLOSE,
+	I_FREAD,
+	I_FWRITE,
 	I_RETURN = 99,
 } INSTR_T;

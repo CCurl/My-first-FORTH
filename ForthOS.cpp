@@ -322,6 +322,62 @@ int ForthOS::DoExecute()
 			addr = MemGet(IP++);
 			break;
 
+		case I_FOPEN: 
+			arg2 = POP(); // mode string
+			arg1 = POP(); // filename
+			{
+				CString fn; MemToString(arg1, fn);
+				CString mode; MemToString(arg2, mode);
+				FILE *fp = NULL;
+				CT2A asciiFn(fn);
+				CT2A asciiMode(mode);
+				fopen_s(&fp, asciiFn.m_psz, asciiMode.m_psz);
+				if (fp == NULL)
+				{
+					PUSH(GetLastError());
+				}
+				PUSH((int)fp);
+			}
+			break;
+
+		case I_FCLOSE:
+			arg1 = POP(); // fp
+			if (arg1 != 0)
+			{
+				fclose((FILE *)arg1);
+			}
+			break;
+
+		case I_FREAD: // returns number actually read on TOS
+			arg1 = POP();
+			arg2 = POP(); // requested length
+			addr = POP(); // target-addr
+			if (arg1 != 0)
+			{
+				char *buf = new char[arg2 + 1];
+				FILE *fp = (FILE *)arg1; // fp
+				int numRead = fread(buf, 1, arg2, fp);
+				for (int i = 0; i < numRead; i++)
+				{
+					MemSet(addr++, buf[i]);
+				}
+				delete[] buf;
+				PUSH(numRead);
+			}
+			else
+			{
+				PUSH(0);
+			}
+			break;
+
+		case I_FWRITE: // data-buf COUNT fp @ fwrite
+			{
+				FILE *fp = (FILE *)POP(); // fp
+				int numtoWrite = POP();
+				int bufAddr = POP(); // start address
+			}
+		break;
+
 		default:
 			// Invalid instruction
 			{
@@ -834,6 +890,22 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		addr = MemGet(xt++);
 		ret.AppendFormat(_T("I_DICTP (%04d)"), addr);
 		ResolveCall(ret, addr);
+		break;
+
+	case I_FOPEN:
+		ret.AppendFormat(_T("I_FOPEN"));
+		break;
+
+	case I_FCLOSE:
+		ret.AppendFormat(_T("I_FCLOSE"));
+		break;
+
+	case I_FREAD:
+		ret.AppendFormat(_T("I_FREAD"));
+		break;
+
+	case I_FWRITE:
+		ret.AppendFormat(_T("I_FWRITE"));
 		break;
 
 	default:
