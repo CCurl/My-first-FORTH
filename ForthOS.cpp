@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <conio.h>
 #include "vm.h"
 #include "ForthOS.h"
 
@@ -100,11 +101,14 @@ int ForthOS::DoExecute()
 
 	while (true)
 	{
-		if (IP == 1225)
-		{
-			int ccc = 0;
-		}
 		INSTR_T instr = (INSTR_T)MemGet(IP++);
+		if ((MemGet(DEBUGFLAG_ADDRESS) != 0) && (input_fp != NULL))
+		{
+			CString txt;
+			DumpInstr(IP - 1, txt);
+			AppendOutput(txt);
+			AppendOutput(_T("\n"));
+		}
 		switch (instr)
 		{
 		case I_CALL:
@@ -348,8 +352,20 @@ int ForthOS::DoExecute()
 			}
 			break;
 
+		case I_FGETC: // fp @ fgetc ( fp -- ch )
+			arg1 = POP(); // fp
+			if (arg1)
+			{
+				FILE *fp = (FILE *)arg1;
+				if (fp == stdin)
+					PUSH(_getch());
+				else
+					PUSH(fgetc(fp));
+			}
+			break;
+
 		case I_FREAD: // returns number actually read on TOS
-			arg1 = POP();
+			arg1 = POP(); // fp
 			arg2 = POP(); // requested length
 			addr = POP(); // target-addr
 			if (arg1 != 0)
@@ -371,10 +387,16 @@ int ForthOS::DoExecute()
 			break;
 
 		case I_FWRITE: // data-buf COUNT fp @ fwrite
+			val = POP(); // fp
+			arg2 = POP(); // num
+			arg1 = POP(); // addr
+			if (val)
 			{
-				FILE *fp = (FILE *)POP(); // fp
-				int numtoWrite = POP();
-				int bufAddr = POP(); // start address
+				FILE *fp = (FILE *)val;
+				for (int i = 0; i < arg2; i++)
+				{
+					fputc(MemGet(arg1++), fp);
+				}
 			}
 		break;
 
@@ -457,6 +479,9 @@ void ForthOS::BootStrap()
 	MemSet(HERE_ADDRESS, CODE_START);
 	MemSet(BASE_ADDRESS, 10); // Decimal
 	MemSet(SOURCE_ADDRESS, INPUT_BUFFER);
+	MemSet(STDIN_ADDRESS, (int)stdin);
+	MemSet(STDOUT_ADDRESS, (int)stdout);
+	MemSet(STDERR_ADDRESS, (int)stderr);
 
 	MemSet(MemGet(LAST_ADDRESS), 0);
 

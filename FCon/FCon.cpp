@@ -50,6 +50,7 @@ int go()
 
 		if (input.CompareNoCase(_T("restart")) == 0)
 		{
+			init();
 			strcpy_s(line, sizeof(line), ".bs");
 			len = 3;
 		}
@@ -150,9 +151,9 @@ int init()
 		signal(SIGINT, SignalHandler);
 	}
 
-	fp = stdin;
 	myOS = new ForthOS(MEMORY_SIZE);
 
+	fp = stdin;
 	myOS->input_fp = stdin;
 	myOS->output_fp = stdout;
 

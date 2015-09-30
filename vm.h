@@ -55,5 +55,6 @@ typedef enum {
 	I_FCLOSE,
 	I_FREAD,
 	I_FWRITE,
+	I_FGETC,
 	I_RETURN = 99,
 } INSTR_T;

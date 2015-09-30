@@ -48,6 +48,7 @@ HERE 999 ! LAST 998 !
 : fclose ?] IF 37 , ELSE [ 37 , ] THEN ; IMMEDIATE 
 : fread  ?] IF 38 , ELSE [ 38 , ] THEN ; IMMEDIATE 
 : fwrite ?] IF 39 , ELSE [ 39 , ] THEN ; IMMEDIATE 
+: fgetc  ?] IF 40 , ELSE [ 40 , ] THEN ; IMMEDIATE 
 : EXIT   ?] IF 99 , THEN ; IMMEDIATE 
 
 : <= 1+ < ;
@@ -67,9 +68,12 @@ HERE 999 ! LAST 998 !
 : ?DUP DUP IF DUP THEN ;
 
 : mod 2dup / * - ;
+: decimal 10 base ! ;
+: hex 16 base ! ;
 
 // string stuff
-: TYPE 0 DO DUP @ EMIT 1+ LOOP DROP ;
+: string, count dup , 0 do dup @ ,    1+ loop drop ;
+: TYPE                0 DO DUP @ EMIT 1+ LOOP DROP ;
 
 : STR+ DUP .INC. DUP @ + ! ;      // ( C ADDR -- ) 
 : STRCLR 0 SWAP ! ;               // ( ADDR -- ) 
@@ -84,13 +88,12 @@ HERE 999 ! LAST 998 !
 : STRCPY DUP STRCLR STRCAT ;
 
 : BL 32 ;
+: CR 13 ;
 
 : .ISWS.
 	DUP 13 = IF DROP BL THEN
 	DUP 10 = IF DROP BL THEN
 	DUP BL = ;
-
-: string, COUNT DUP , 0 DO DUP @ , 1+ LOOP DROP ;
 
 : ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 1+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
 
@@ -99,15 +102,15 @@ HERE 999 ! LAST 998 !
 
 : ALLOCATE HERE SWAP 0 DO 0 , LOOP ;
 : ALLOT ALLOCATE DROP ;
-: VARIABLE 1 ALLOCATE CREATE 33 , LAST , 3 , , 99 , ;
+: VARIABLE CREATE 33 , LAST , 3 , HERE 2+ , 99 , ;
 
 // ( n -- q r )
 : /MOD DUP BASE @ / DUP BASE @ * ROT SWAP - ;
 
 : .BL BL EMIT ;
-: .CR 13 EMIT 10 EMIT ;
+: .CR CR EMIT 10 EMIT ;
 
-// Case sensitve string compare
+// Case sensitive string compare
 // ( addr1 addr2 -- bool ) 
 : strcmp 2DUP @ SWAP @ =
 	IF
@@ -228,8 +231,6 @@ HERE 999 ! LAST 998 !
 	R> 2DROP
 	;
 
-: string, dup , 0 do dup @ , 1+ loop drop ;
-
 : ." PAD '"' .collect. ?] 
 	IF 
 	  3 , HERE 0 , 30 , [ 3 , ' COUNT , ] , 30 , [ 3 , ' TYPE , ] , 27 , HERE SWAP 0 , HERE SWAP !
@@ -242,7 +243,7 @@ HERE 999 ! LAST 998 !
 : " PAD '"' .collect. ?] 
 	IF 
 	  3 , HERE 3 + , 27 , HERE 0 ,
-		PAD COUNT string,
+		PAD string,
 		HERE SWAP !
 	ELSE 
 		PAD
@@ -273,11 +274,27 @@ HERE 999 ! LAST 998 !
 : ?free last here - ;
 : .free ?free . ;
 
-\ FILE stuff
+// FILE stuff
+: stdin  11 @ ;
+: stdout 12 @ ;
+: stderr 13 @ ;
 : fopen.read.text " rt" fopen ;
 : fopen.read.binary " rb" fopen ;
 : fopen.write.text " wt" fopen ;
 : fopen.write.binary " wb" fopen ;
 : fread.line ." fread.line not implemented yet." ;
+
+: src (source) @ ;
+: readline src strclr begin stdin fgetc dup CR = if drop exit else dup emit src str+ then repeat ;
+
+variable cmds 100 allot
+
+: dbg.on .cr 1 15 ! ;
+: dbg.off 0 15 ! .cr ;
+: .num. 777777 . ;
+: .ew. dup head>body swap 1+ @ if execute else ?] if 30 , , else execute then then ;
+: .pw. pad .fw. ?dup if .ew. else .num. then ;
+: .pl. begin source nip >in @ <= if exit else .word. pad @ if .pw. then then repeat ;
+: forth begin ." 4th>" readline src " bye" strcmpi if exit else .BL 0 >IN ! .pl. ."  ok" .cr then repeat ;
 
 break;

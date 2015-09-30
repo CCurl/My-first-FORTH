@@ -13,13 +13,16 @@
 #define TOIN_ADDRESS 6 // >IN
 #define	MEMLAST_ADDRESS 7
 #define DEPTH_ADDRESS 8
+#define STDIN_ADDRESS 11
+#define STDOUT_ADDRESS 12
+#define STDERR_ADDRESS 13
+#define DEBUGFLAG_ADDRESS 15
 
-#define PAD_ADDRESS 800
+#define PAD_ADDRESS 900
 #define TEMP_REG1 990
 #define TEMP_REG2 991
 
-// #define PAD_ADDRESS 950 // PAD
-#define INPUT_BUFFER 21 // typed commands go here
+#define INPUT_BUFFER 100 // typed commands go here
 #define FILE_BUFFER 600 // commands read from file go here
 
 #define DICT_START 0
@@ -35,7 +38,7 @@
 #define MODE_BOOTIF 1
 #define MODE_RUN 2
 
-#define MEMORY_SIZE (8*(1024))
+#define MEMORY_SIZE (16*(1024))
 #define STACK_SIZE 128 // Data stack
 #define CSTACK_SIZE 32 // Conditional stack
 #define RSTACK_SIZE 32 // Return stack
