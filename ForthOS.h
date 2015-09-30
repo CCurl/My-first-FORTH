@@ -5,17 +5,19 @@
 #define FLAG_IS_NORMAL 0x0000
 #define FLAG_IS_IMMEDIATE 0x0001
 
-#define HERE_ADDRESS 1
-#define LAST_ADDRESS 2
-#define STATE_ADDRESS 3
-#define BASE_ADDRESS 4
-#define SOURCE_ADDRESS 5 // Points to the current input buffer
-#define TOIN_ADDRESS 6 // >IN
-#define	MEMLAST_ADDRESS 7
-#define DEPTH_ADDRESS 8
-#define STDIN_ADDRESS 11
-#define STDOUT_ADDRESS 12
-#define STDERR_ADDRESS 13
+#define HERE_ADDRESS       1
+#define LAST_ADDRESS       2
+#define STATE_ADDRESS      3
+#define BASE_ADDRESS       4
+#define SOURCE_ADDRESS     5 // Points to the current input buffer
+#define TOIN_ADDRESS       6 // >IN
+#define	MEMLAST_ADDRESS    7
+#define DEPTH_ADDRESS      8
+#define UNUSED_9           9
+#define UNUSED_10         10
+#define STDIN_ADDRESS     11 
+#define STDOUT_ADDRESS    12
+#define STDERR_ADDRESS    13
 #define DEBUGFLAG_ADDRESS 15
 
 #define PAD_ADDRESS 900
@@ -154,7 +156,7 @@ class ForthOS
 	void Dump(CString& ret);
 	void DumpStack(CString& ret);
 	int DumpInstr(int xt, CString& ret);
-	int DumpWord(int xt, CString& ret, int stopHere);
+	int See(int xt, CString& ret, int stopHere);
 	void ResolveCall(CString& ret, int addr);
 	void Load();
 	void Save();

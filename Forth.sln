@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Forth", "Forth.vcxproj", "{B5FABAE6-784D-43B2-A43C-A46F3B061730}"
 EndProject
@@ -10,6 +10,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "4th files", "4th files", "{651C94E3-F822-4D1C-A41B-781C1C0D42D8}"
 	ProjectSection(SolutionItems) = preProject
 		BootStrap.4th = BootStrap.4th
+		ForthOS.4th = ForthOS.4th
 		lists.4th = lists.4th
 		test1.4th = test1.4th
 		vmath.4th = vmath.4th

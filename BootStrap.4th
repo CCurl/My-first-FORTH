@@ -12,6 +12,7 @@ HERE 999 ! LAST 998 !
 : // SOURCE + >IN ! ; 
 
 // Primitives ... macro-assembler building blocks ...
+: PUSH 3 , ;
 : SWAP   ?] IF  5 , ELSE [  5 , ] THEN ; IMMEDIATE
 : DROP   ?] IF  6 , ELSE [  6 , ] THEN ; IMMEDIATE
 : PICK   ?] IF  7 , ELSE [  7 , ] THEN ; IMMEDIATE
@@ -35,13 +36,14 @@ HERE 999 ! LAST 998 !
 : LOOP   ?] IF 25 , ELSE [ 25 , ] THEN ; IMMEDIATE
 : +LOOP  ?] IF 26 , ELSE [ 26 , ] THEN ; IMMEDIATE
 : BEGIN  ?] IF HERE THEN ; IMMEDIATE // No opcode needed for this
-: REPEAT ?] IF 27 , , THEN ; IMMEDIATE
+: AGAIN 27 , ;
+: REPEAT ?] IF AGAIN , THEN ; IMMEDIATE
 : .      ?] IF 28 , ELSE [ 28 , ] THEN ; IMMEDIATE
 //             29 used to be TYPE, now it is obsolete
-//             30 is CALL
+: CALL   30 , ; //             30 is CALL
 : OVER   ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
 : EMIT   ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
-//              33 is DICTP, a NOOP to skip over the dictionary entry back pointer
+: DICTP 33 , ;                                     // NOOP to skip over the dictionary entry back pointer
 : 1-     ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
 : 0=     ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
 : fopen  ?] IF 36 , ELSE [ 36 , ] THEN ; IMMEDIATE 
@@ -49,7 +51,8 @@ HERE 999 ! LAST 998 !
 : fread  ?] IF 38 , ELSE [ 38 , ] THEN ; IMMEDIATE 
 : fwrite ?] IF 39 , ELSE [ 39 , ] THEN ; IMMEDIATE 
 : fgetc  ?] IF 40 , ELSE [ 40 , ] THEN ; IMMEDIATE 
-: EXIT   ?] IF 99 , THEN ; IMMEDIATE 
+: RETURN 99 , ; 
+: EXIT   ?] IF RETURN THEN ; IMMEDIATE
 
 : <= 1+ < ;
 : >= 1- > ;
@@ -102,7 +105,7 @@ HERE 999 ! LAST 998 !
 
 : ALLOCATE HERE SWAP 0 DO 0 , LOOP ;
 : ALLOT ALLOCATE DROP ;
-: VARIABLE CREATE 33 , LAST , 3 , HERE 2+ , 99 , ;
+: VARIABLE CREATE DICTP LAST , PUSH HERE 2+ , RETURN 0 , ;
 
 // ( n -- q r )
 : /MOD DUP BASE @ / DUP BASE @ * ROT SWAP - ;
@@ -177,10 +180,11 @@ HERE 999 ! LAST 998 !
 : FILL ( addr n b -- ) -rot OVER + SWAP DO DUP I ! LOOP DROP ;
 : ERASE ( addr n -- ) 0 FILL ;
 
+// example: variable vector  :NONAME 1 2 3 + + . NONAME;  vector !
 : :NONAME ( -- code-addr ) HERE ] ;
-: NONAME; ?] IF 99 , 0 STATE ! THEN ; IMMEDIATE
-( Usage: :NONAME 1 2 3 + + . NONAME; )
+: NONAME; ?] IF RETURN 0 STATE ! THEN ; IMMEDIATE
 
+// Return the number of words in the dictionary
 : .wordcount. ( -- n ) 0 LAST
 	BEGIN
 		DUP MEM_LAST = IF 
@@ -197,7 +201,7 @@ HERE 999 ! LAST 998 !
 : .codesize. HERE 1001 - . ;
 : .S DEPTH . '-' EMIT .BL DEPTH IF -1 DEPTH 1- 1- DO I PICK . -1 +LOOP THEN ;
 
-: .dict. ( -- n ) LAST
+: .dict. ( -- ) LAST
 	BEGIN
 		DUP MEM_LAST = IF 
 			DROP EXIT
@@ -207,7 +211,7 @@ HERE 999 ! LAST 998 !
 	REPEAT
 	;
 
-: words ( -- n ) LAST
+: words ( -- ) LAST
 	BEGIN
 		DUP MEM_LAST = IF 
 			DROP EXIT
@@ -233,16 +237,16 @@ HERE 999 ! LAST 998 !
 
 : ." PAD '"' .collect. ?] 
 	IF 
-	  3 , HERE 0 , 30 , [ 3 , ' COUNT , ] , 30 , [ 3 , ' TYPE , ] , 27 , HERE SWAP 0 , HERE SWAP !
+	  PUSH HERE 0 , CALL [ PUSH ' COUNT , ] , CALL [ PUSH ' TYPE , ] , AGAIN HERE SWAP 0 , HERE SWAP !
 		PAD string,
 		HERE SWAP !
 	ELSE 
-		PAD [ 30 , ' COUNT , 30 , ' TYPE , ]
+		PAD [ CALL ' COUNT , CALL ' TYPE , ]
 	THEN ; IMMEDIATE
 
 : " PAD '"' .collect. ?] 
 	IF 
-	  3 , HERE 3 + , 27 , HERE 0 ,
+	  PUSH HERE 3 + , AGAIN HERE 0 ,
 		PAD string,
 		HERE SWAP !
 	ELSE 
@@ -260,7 +264,7 @@ HERE 999 ! LAST 998 !
 // 3 test array>    ... fetch value at position 3 from array 'test'
 // ********************************************************************************
 
-: ARRAY DUP 1+ ALLOCATE TUCK ! CREATE 33 , LAST , 3 , , 99 , ;
+: ARRAY DUP 1+ ALLOCATE TUCK ! CREATE DICTP LAST , PUSH , RETURN ;
 : ARRAY.Check.Bounds COUNT 1- 2 pick swap 0 swap between if -1 else ." index out of bounds." 0 then ;
 : >ARRAY ( val pos array -- ) Array.Check.Bounds if + ! else 2drop then ;
 : ARRAY> ( pos array -- val ) Array.Check.Bounds if + @ else 2drop then ;
