@@ -11,7 +11,7 @@
 #define BASE_ADDRESS       4
 #define SOURCE_ADDRESS     5 // Points to the current input buffer
 #define TOIN_ADDRESS       6 // >IN
-#define	MEMLAST_ADDRESS    7
+#define MEMLAST_ADDRESS    7
 #define DEPTH_ADDRESS      8
 #define UNUSED_9           9
 #define UNUSED_10         10
