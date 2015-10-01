@@ -1,9 +1,7 @@
-: BootStrap.4th ;
+: .ForthOS.bootstrap. ;
 
-HERE 999 ! LAST 998 !
-: .bsr 999 @ (HERE) ! 998 @ (LAST) ! ;
+: STATE 3 ;
 
-: state 3 ;
 : ] 1 STATE ! ;
 : [ 0 STATE ! ; IMMEDIATE
 : ?] STATE @ ;
@@ -12,15 +10,40 @@ HERE 999 ! LAST 998 !
 
 : // SOURCE + >IN ! ; 
 
+// *************************************************************************************************
+// Addresses
+
+// : unused     0   ;
+// : (HERE)     1   ;
+// : (LAST)     2   ;
+// : STATE      3   ;
+: BASE          4   ; 
+// : (SOURCE)   5   ;
+// : >IN        6   ;
+: MEM_LAST      7 @ ;
+: DEPTH         8 @ ;
+// : unused     9   ;
+// : unused    10   ;
+: STDIN        11 @ ;
+: STDOUT       12 @ ;
+: STDERR       13 @ ;
+// : unused    14   ;
+: DBG.FLG      15 @ ;
+: TIB         100   ;
+: CODE_START 1000   ;
+
+// *************************************************************************************************
 // Primitives ... macro-assembler building blocks ...
-: PUSH 3 , ;
+//              1                                  // I_FETCH (@)
+//              2                                  // I_STORE (!)
+: PUSH          3 , ;                              // I_LITERAL
 : DUP    ?] IF  4 , ELSE [  4 , ] THEN ; IMMEDIATE
 : SWAP   ?] IF  5 , ELSE [  5 , ] THEN ; IMMEDIATE
 : DROP   ?] IF  6 , ELSE [  6 , ] THEN ; IMMEDIATE
 : PICK   ?] IF  7 , ELSE [  7 , ] THEN ; IMMEDIATE
 : ROT    ?] IF  8 , ELSE [  8 , ] THEN ; IMMEDIATE
 : 1+     ?] IF  9 , ELSE [  9 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
-//             10 (+) was needed earlier
+//             10 - I_PLUS (+)                     // defined earlier
 : -      ?] IF 11 , ELSE [ 11 , ] THEN ; IMMEDIATE
 : *      ?] IF 12 , ELSE [ 12 , ] THEN ; IMMEDIATE
 : /      ?] IF 13 , ELSE [ 13 , ] THEN ; IMMEDIATE
@@ -31,21 +54,19 @@ HERE 999 ! LAST 998 !
 : >R     ?] IF 18 , ELSE [ 18 , ] THEN ; IMMEDIATE
 : R>     ?] IF 19 , ELSE [ 19 , ] THEN ; IMMEDIATE
 : R@     ?] IF 20 , ELSE [ 20 , ] THEN ; IMMEDIATE
-//             21 is the IF runtime logic
+//             21 - IF runtime logic               // if TOS == 0, then GOTO to ELSE or THEN
 : DO     ?] IF 22 , ELSE [ 22 , ] THEN ; IMMEDIATE
 : I      ?] IF 23 , ELSE [ 23 , ] THEN ; IMMEDIATE
 : LEAVE  ?] IF 24 , ELSE [ 24 , ] THEN ; IMMEDIATE
 : LOOP   ?] IF 25 , ELSE [ 25 , ] THEN ; IMMEDIATE
 : +LOOP  ?] IF 26 , ELSE [ 26 , ] THEN ; IMMEDIATE
-: BEGIN  ?] IF HERE THEN ; IMMEDIATE // No opcode needed for this
-: AGAIN 27 , ;
-: REPEAT ?] IF AGAIN , THEN ; IMMEDIATE
+: GOTO         27 , ;
 : .      ?] IF 28 , ELSE [ 28 , ] THEN ; IMMEDIATE
 //             29 used to be TYPE, now it is obsolete
-: CALL   30 , ; //             30 is CALL
+: CALL         30 , ;                              // I_CALL
 : OVER   ?] IF 31 , ELSE [ 31 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
 : EMIT   ?] IF 32 , ELSE [ 32 , ] THEN ; IMMEDIATE
-: DICTP 33 , ;                                     // NOOP to skip over the dictionary entry back pointer
+: DICTP        33 , ;                              // NOOP to skip over the dictionary entry back pointer
 : 1-     ?] IF 34 , ELSE [ 34 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
 : 0=     ?] IF 35 , ELSE [ 35 , ] THEN ; IMMEDIATE // not required as an opcode, for performance
 : fopen  ?] IF 36 , ELSE [ 36 , ] THEN ; IMMEDIATE 
@@ -53,8 +74,15 @@ HERE 999 ! LAST 998 !
 : fread  ?] IF 38 , ELSE [ 38 , ] THEN ; IMMEDIATE 
 : fwrite ?] IF 39 , ELSE [ 39 , ] THEN ; IMMEDIATE 
 : fgetc  ?] IF 40 , ELSE [ 40 , ] THEN ; IMMEDIATE 
-: RETURN 99 , ; 
+: RETURN       99 , ; 
 : EXIT   ?] IF RETURN THEN ; IMMEDIATE
+
+// No opcodes needed for these
+: BEGIN  ?] IF HERE   THEN ; IMMEDIATE 
+: REPEAT ?] IF GOTO , THEN ; IMMEDIATE
+
+
+// *************************************************************************************************
 
 : <= 1+ < ;
 : >= 1- > ;
@@ -171,7 +199,7 @@ HERE 999 ! LAST 998 !
 		2DUP HEAD>NAME STRCMPI
 		IF NIP EXIT THEN
 
-		DUP @ +
+		DUP @ + 1+
 	REPEAT
 	;
 
@@ -179,7 +207,7 @@ HERE 999 ! LAST 998 !
 : ' FIND-WORD DUP IF HEAD>BODY THEN ;
 : EXECUTE ( addr -- ) ?DUP IF >R THEN ;
 
-: FILL ( addr n b -- ) -rot OVER + SWAP DO DUP I ! LOOP DROP ;
+: FILL ( addr n b -- ) -ROT OVER + SWAP DO DUP I ! LOOP DROP ;
 : ERASE ( addr n -- ) 0 FILL ;
 
 // example: variable vector  :NONAME 1 2 3 + + . NONAME;  vector !
@@ -187,10 +215,10 @@ HERE 999 ! LAST 998 !
 : NONAME; ?] IF RETURN 0 STATE ! THEN ; IMMEDIATE
 
 // Return the number of words in the dictionary
-: .wordcount. ( -- n ) 0 LAST
+: ?num.words ( -- n ) 0 LAST
 	BEGIN
 		DUP MEM_LAST = IF 
-			DROP . EXIT
+			DROP EXIT
 		THEN
 
 		SWAP 1+ SWAP
@@ -199,8 +227,10 @@ HERE 999 ! LAST 998 !
 	REPEAT
 	;
 
-: .dictsize. MEM_LAST LAST - . ;
-: .codesize. HERE 1001 - . ;
+: .dict.size MEM_LAST LAST - . ;
+: .code.size HERE CODE_START 1+ - . ;
+: .word.count ?num.words . ;
+
 : .S DEPTH . '-' EMIT .BL DEPTH IF -1 DEPTH 1- 1- DO I PICK . -1 +LOOP THEN ;
 
 : .dict. ( -- ) LAST
@@ -239,7 +269,7 @@ HERE 999 ! LAST 998 !
 
 : ." PAD '"' .collect. ?] 
 	IF 
-	  PUSH HERE 0 , CALL [ PUSH ' COUNT , ] , CALL [ PUSH ' TYPE , ] , AGAIN HERE SWAP 0 , HERE SWAP !
+	  PUSH HERE 0 , CALL [ PUSH ' COUNT , ] , CALL [ PUSH ' TYPE , ] , GOTO HERE SWAP 0 , HERE SWAP !
 		PAD string,
 		HERE SWAP !
 	ELSE 
@@ -248,7 +278,7 @@ HERE 999 ! LAST 998 !
 
 : " PAD '"' .collect. ?] 
 	IF 
-	  PUSH HERE 3 + , AGAIN HERE 0 ,
+	  PUSH HERE 3 + , GOTO HERE 0 ,
 		PAD string,
 		HERE SWAP !
 	ELSE 
@@ -274,16 +304,12 @@ HERE 999 ! LAST 998 !
 
 // ********************************************************************************
 
-: forget find-word ?dup if dup HEAD>BODY (HERE) ! DUP @ + (LAST) ! then ;
-: forget.last  LAST HEAD>BODY (HERE) ! LAST DUP @ + (LAST) ! ;
+: forget find-word ?dup if dup HEAD>BODY (HERE) ! DUP @ + 1+ (LAST) ! then ;
+: forget.last  LAST HEAD>BODY (HERE) ! LAST DUP @ + 1+ (LAST) ! ;
 
 : ?free last here - ;
-: .free ?free . ;
 
 // FILE stuff
-: stdin  11 @ ;
-: stdout 12 @ ;
-: stderr 13 @ ;
 : fopen.read.text " rt" fopen ;
 : fopen.read.binary " rb" fopen ;
 : fopen.write.text " wt" fopen ;
@@ -295,8 +321,8 @@ HERE 999 ! LAST 998 !
 
 variable cmds 100 allot
 
-: dbg.on .cr 1 15 ! ;
-: dbg.off 0 15 ! .cr ;
+: dbg.on .cr 1 DBG.FLG ! ;
+: dbg.off 0 DBG.FLG ! .cr ;
 : .num. 777777 . ;
 : .ew. dup head>body swap 1+ @ if execute else ?] if 30 , , else execute then then ;
 : .pw. pad .fw. ?dup if .ew. else .num. then ;

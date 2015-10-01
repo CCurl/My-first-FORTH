@@ -30,7 +30,7 @@ ForthOS::~ForthOS()
 #endif
 }
 
-int ForthOS::PUSH(int val)
+int ForthOS::PUSH(int val) 
 {
 	if (SP >= STACK_SIZE)
 	{
@@ -38,7 +38,7 @@ int ForthOS::PUSH(int val)
 		MemSet(DEPTH_ADDRESS, SP);
 		throw CString(_T("Stack full."));
 	}
-	stack[SP++] = val;
+	stack[SP++] = val; 
 	MemSet(DEPTH_ADDRESS, SP);
 	return val;
 }
@@ -291,7 +291,7 @@ int ForthOS::DoExecute()
 		case I_DOT:
 			val = POP();
 			{
-				CString x;
+				CString x; 
 				int base = MemGet(BASE_ADDRESS);
 				if (base == 10)
 					x.Format(_T("%d "), val);
@@ -326,7 +326,7 @@ int ForthOS::DoExecute()
 			addr = MemGet(IP++);
 			break;
 
-		case I_FOPEN:
+		case I_FOPEN: 
 			arg2 = POP(); // mode string
 			arg1 = POP(); // filename
 			{
@@ -398,14 +398,14 @@ int ForthOS::DoExecute()
 					fputc(MemGet(arg1++), fp);
 				}
 			}
-			break;
+		break;
 
 		default:
 			// Invalid instruction
-		{
+			{
 				   CString err; err.Format(_T("invalid instruction (%d) at %d."), instr, IP - 1);
-				   throw err;
-		}
+				throw err;
+			}
 			break;
 		}
 	}
@@ -443,11 +443,11 @@ int ForthOS::Compile(int mode, ...)
 }
 
 // Dictionary entry structure ...
-// int enrtySize;     // nameLength + 3 / like a counted array element
-// int flags;         // 1 = IMMEDIATE
-// int xt;            // address of the start the of code
-// int nameLength;    // a standard counted string buffer
-// int name[];
+// int entrySize; // a counted array; name length + 3
+// int flags;     // 1 = IMMEDIATE
+// int xt;        // address of the start the of code
+// int nameLength;
+// int name[nameLength];
 int ForthOS::Create(int name, int imm_flag, int xt)
 {
 	int name_len = MemGet(name++);
@@ -605,7 +605,7 @@ void ForthOS::BootStrap()
 		I_CALL, xtPad, I_FETCH, I_OVER, I_STORE, I_ONEPLUS,
 		I_CALL, xtPad, I_CALL, xtCount, I_TO_R, I_SWAP, I_R_FROM, I_LITERAL, 0,
 		I_DO,
-			I_OVER, I_I, I_PLUS, I_FETCH, I_OVER, I_STORE, I_ONEPLUS,
+		/* */ I_OVER, I_I, I_PLUS, I_FETCH, I_OVER, I_STORE, I_ONEPLUS,
 		I_LOOP,
 		I_DROP, I_DROP,
 		I_RETURN, COMPILE_BREAK);
@@ -623,7 +623,7 @@ void ForthOS::BootStrap()
 	// Built-In VAR: : (COLON)
 	xt = Compile(MODE_BOOT,
 		I_CALL, xtCreate,
-		I_LITERAL, I_DICTP, I_CALL, xtComma,
+		I_LITERAL, I_DICTP, I_CALL, xtComma, 
 		I_CALL, xtLAST, I_CALL, xtComma,
 		I_LITERAL, 1, I_LITERAL, STATE_ADDRESS, I_STORE,
 		I_RETURN, COMPILE_BREAK);
@@ -778,10 +778,10 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_ROT"));
 		break;
 
-		// These are obsolete ...
-		// case I_IF:
-		// case I_ELSE:
-		// case I_THEN:
+	// These are obsolete ...
+	// case I_IF:
+	// case I_ELSE:
+	// case I_THEN:
 
 	case I_IF_RT:
 		ret.AppendFormat(_T("I_IF_RT"));
@@ -874,7 +874,7 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	case I_EMIT:
 		ret.AppendFormat(_T("I_EMIT"));
 		break;
-
+		
 	case I_TO_R:
 		ret.AppendFormat(_T("I_TO_R (>R)"));
 		break;
@@ -987,7 +987,7 @@ void ForthOS::Dump(CString& ret)
 void ForthOS::AppendOutput(LPCTSTR text)
 {
 	if (output_fp != NULL)
-
+		
 		fputws(text, output_fp);
 	else
 		output.Append(text);
@@ -1205,7 +1205,7 @@ int ForthOS::ParseInput(LPCTSTR commands)
 	int source = StringToMem(MemGet(SOURCE_ADDRESS), inputStream);
 
 	// 0 >IN !
-	int toIN = 0;
+	int toIN = 0; 
 	MemSet(TOIN_ADDRESS, toIN);
 
 	int len = MemGet(source++);
@@ -1284,7 +1284,7 @@ bool ForthOS::Include(int pad)
 	FILE *fp = fileExists(fileName);
 	if (fp == NULL)
 	{
-		CString fn2;
+		CString fn2; 
 		fn2.Format(_T("..\\%s"), fileName);
 		fp = fileExists(fn2);
 	}
