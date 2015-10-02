@@ -74,6 +74,7 @@
 : fread  ?] IF 38 , ELSE [ 38 , ] THEN ; IMMEDIATE 
 : fwrite ?] IF 39 , ELSE [ 39 , ] THEN ; IMMEDIATE 
 : fgetc  ?] IF 40 , ELSE [ 40 , ] THEN ; IMMEDIATE 
+: .brk.        98 , ; IMMEDIATE
 : RETURN       99 , ; 
 : EXIT   ?] IF RETURN THEN ; IMMEDIATE
 
@@ -83,6 +84,7 @@
 
 
 // *************************************************************************************************
+: ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 1+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
 
 : <= 1+ < ;
 : >= 1- > ;
@@ -106,7 +108,7 @@
 
 // string stuff
 : string, count dup , 0 do dup @ ,    1+ loop drop ;
-: TYPE                0 DO DUP @ EMIT 1+ LOOP DROP ;
+: TYPE ( addr n -- )  0 DO DUP @ EMIT 1+ LOOP DROP ;
 
 : STR+ DUP .INC. DUP @ + ! ;      // ( C ADDR -- ) 
 : STRCLR 0 SWAP ! ;               // ( ADDR -- ) 
@@ -127,8 +129,6 @@
 	DUP 13 = IF DROP BL THEN
 	DUP 10 = IF DROP BL THEN
 	DUP BL = ;
-
-: ( SOURCE >IN @ DO DUP I + @ ')' = IF DROP I 1+ >IN ! LEAVE THEN LOOP ; IMMEDIATE
 
 // ( c min max -- bool )
 : BETWEEN 2 PICK >= >R >= R> = ;
@@ -190,21 +190,37 @@
 : NAME>HEAD 3 - ;
 : BODY>HEAD 1+ @ ;
 
-: .FW. ( ADDR1 -- WORD-ADDR|0 ) LAST 
+: .S DEPTH . '-' EMIT .BL DEPTH IF -1 DEPTH 1- 1- DO I PICK . -1 +LOOP THEN ;
+
+: forget.last  LAST HEAD>BODY (HERE) ! LAST DUP @ + 1+ (LAST) ! ;
+
+VARIABLE .cw.
+: word.this .cw. @ ;
+: word.first LAST .cw. ! word.this ;
+: word.next word.this ?DUP IF COUNT + DUP MEM_LAST >= IF DROP 0 THEN .cw. ! THEN word.this ;
+
+// ( c-addr -- c-addr 0 | xt 1 | xt -1 ) 
+: FIND 
+	word.first
 	BEGIN
-		DUP MEM_LAST = IF 
-			2DROP 0 EXIT
+		IF
+			DUP word.this HEAD>NAME STRCMPI
+			IF
+				DROP
+				word.this HEAD>BODY
+				word.this 1+ @ 
+				0= IF -1 ELSE 1 THEN
+				EXIT
+			THEN
+		ELSE 
+			EXIT
 		THEN
 
-		2DUP HEAD>NAME STRCMPI
-		IF NIP EXIT THEN
-
-		DUP @ + 1+
+		word.next
 	REPEAT
 	;
 
-: FIND-WORD .WORD. PAD .FW. ;
-: ' FIND-WORD DUP IF HEAD>BODY THEN ;
+: ' .word. PAD FIND 0= IF DROP THEN ;
 : EXECUTE ( addr -- ) ?DUP IF >R THEN ;
 
 : FILL ( addr n b -- ) -ROT OVER + SWAP DO DUP I ! LOOP DROP ;
@@ -215,15 +231,10 @@
 : NONAME; ?] IF RETURN 0 STATE ! THEN ; IMMEDIATE
 
 // Return the number of words in the dictionary
-: ?num.words ( -- n ) 0 LAST
+: ?num.words ( -- n ) 0 word.first
 	BEGIN
-		DUP MEM_LAST = IF 
-			DROP EXIT
-		THEN
-
-		SWAP 1+ SWAP
-
-		DUP @ + 1+
+		IF 1+ ELSE EXIT THEN
+		word.next
 	REPEAT
 	;
 
@@ -231,26 +242,27 @@
 : .code.size HERE CODE_START 1+ - . ;
 : .word.count ?num.words . ;
 
-: .S DEPTH . '-' EMIT .BL DEPTH IF -1 DEPTH 1- 1- DO I PICK . -1 +LOOP THEN ;
-
-: .dict. ( -- ) LAST
+: .dict. ( -- ) word.first
 	BEGIN
-		DUP MEM_LAST = IF 
-			DROP EXIT
+		?DUP
+		IF
+			DUP . DUP 1+ @ . DUP HEAD>BODY . HEAD>NAME COUNT TYPE .CR 
+		ELSE
+			EXIT
 		THEN
-		DUP . DUP 1+ @ . DUP HEAD>BODY . DUP HEAD>NAME COUNT TYPE .CR 
-		DUP @ + 1+
+		word.next
 	REPEAT
 	;
 
-: words ( -- ) LAST
+: words ( -- ) word.first
 	BEGIN
-		DUP MEM_LAST = IF 
-			DROP EXIT
+		?DUP 
+		IF
+			HEAD>NAME COUNT TYPE .BL
+		ELSE
+			EXIT
 		THEN
-		
-		DUP HEAD>NAME COUNT TYPE .BL
-		DUP @ + 1+
+		word.next
 	REPEAT
 	;
 
@@ -267,15 +279,6 @@
 	R> 2DROP
 	;
 
-: ." PAD '"' .collect. ?] 
-	IF 
-	  PUSH HERE 0 , CALL [ PUSH ' COUNT , ] , CALL [ PUSH ' TYPE , ] , GOTO HERE SWAP 0 , HERE SWAP !
-		PAD string,
-		HERE SWAP !
-	ELSE 
-		PAD [ CALL ' COUNT , CALL ' TYPE , ]
-	THEN ; IMMEDIATE
-
 : " PAD '"' .collect. ?] 
 	IF 
 	  PUSH HERE 3 + , GOTO HERE 0 ,
@@ -285,6 +288,14 @@
 		PAD
 	THEN ; IMMEDIATE
 
+: ." PAD '"' .collect. ?] 
+	IF 
+	  PUSH HERE 0 , CALL [ PUSH ' COUNT , ] , CALL [ PUSH ' TYPE , ] , GOTO HERE SWAP 0 , HERE SWAP !
+		PAD string,
+		HERE SWAP !
+	ELSE 
+		PAD [ CALL ' COUNT , CALL ' TYPE , ]
+	THEN ; IMMEDIATE
 
 // ********************************************************************************
 // Arrays return the starting address of the array.
@@ -296,16 +307,15 @@
 // 3 test array>    ... fetch value at position 3 from array 'test'
 // ********************************************************************************
 
-: ARRAY DUP 1+ ALLOCATE TUCK ! CREATE DICTP LAST , PUSH , RETURN ;
-: ARRAY.Check.Bounds COUNT 1- 2 pick swap 0 swap between if -1 else ." index out of bounds." 0 then ;
-: >ARRAY ( val pos array -- ) Array.Check.Bounds if + ! else 2drop then ;
-: ARRAY> ( pos array -- val ) Array.Check.Bounds if + @ else 2drop then ;
-: .ARRAY COUNT 0 DO DUP @ . 1+ LOOP DROP ;
+// : ARRAY DUP 1+ ALLOCATE TUCK ! CREATE DICTP LAST , PUSH , RETURN ;
+// : ARRAY.Check.Bounds COUNT 1- 2 pick swap 0 swap between if -1 else ." index out of bounds." 0 then ;
+// : >ARRAY ( val pos array -- ) Array.Check.Bounds if + ! else 2drop then ;
+// : ARRAY> ( pos array -- val ) Array.Check.Bounds if + @ else 2drop then ;
+// : .ARRAY COUNT 0 DO DUP @ . 1+ LOOP DROP ;
 
 // ********************************************************************************
 
-: forget find-word ?dup if dup HEAD>BODY (HERE) ! DUP @ + 1+ (LAST) ! then ;
-: forget.last  LAST HEAD>BODY (HERE) ! LAST DUP @ + 1+ (LAST) ! ;
+: forget .word. PAD FIND if dup (HERE) ! BODY>HEAD DUP @ + 1+ (LAST) ! else count type ."  not found." then ;
 
 : ?free last here - ;
 
@@ -316,17 +326,19 @@
 : fopen.write.binary " wb" fopen ;
 : fread.line ." fread.line not implemented yet." ;
 
-: src (source) @ ;
-: readline src strclr begin stdin fgetc dup CR = if drop exit else dup emit src str+ then repeat ;
+break;
 
-variable cmds 100 allot
+// : src (source) @ ;
+// : readline src strclr begin stdin fgetc dup CR = if drop exit else dup emit src str+ then repeat ;
 
-: dbg.on .cr 1 DBG.FLG ! ;
-: dbg.off 0 DBG.FLG ! .cr ;
-: .num. 777777 . ;
-: .ew. dup head>body swap 1+ @ if execute else ?] if 30 , , else execute then then ;
-: .pw. pad .fw. ?dup if .ew. else .num. then ;
-: .pl. begin source nip >in @ <= if exit else .word. pad @ if .pw. then then repeat ;
-: forth begin ." 4th>" readline src " bye" strcmpi if exit else .BL 0 >IN ! .pl. ."  ok" .cr then repeat ;
+// variable cmds 100 allot
+
+// : dbg.on .cr 1 DBG.FLG ! ;
+// : dbg.off 0 DBG.FLG ! .cr ;
+// : .num. 777777 . ;
+// : .ew. dup head>body swap 1+ @ if execute else ?] if 30 , , else execute then then ;
+// : .pw. pad .fw. ?dup if .ew. else .num. then ;
+// : .pl. begin source nip >in @ <= if exit else .word. pad @ if .pw. then then repeat ;
+// : forth begin ." 4th>" readline src " bye" strcmpi if exit else .BL 0 >IN ! .pl. ."  ok" .cr then repeat ;
 
 break;

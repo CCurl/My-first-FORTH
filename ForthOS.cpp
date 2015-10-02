@@ -400,6 +400,10 @@ int ForthOS::DoExecute()
 			}
 		break;
 
+		case 98: // data-buf COUNT fp @ fwrite
+			addr = IP - 1;
+			break;
+
 		default:
 			// Invalid instruction
 			{
@@ -485,30 +489,50 @@ void ForthOS::BootStrap()
 
 	MemSet(MemGet(LAST_ADDRESS), 0);
 
-	// COUNT
+	// : (HERE) 1 ;
 	xt = Compile(MODE_BOOT,
-		I_DUP, I_FETCH, I_SWAP, I_ONEPLUS, I_SWAP,
+		I_LITERAL, HERE_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
-	int xtCount = Create(StringToMem(INPUT_BUFFER, _T("COUNT")), FLAG_IS_NORMAL, xt);
+	int xtHERE_ADDR = Create(StringToMem(INPUT_BUFFER, _T("(HERE)")), FLAG_IS_NORMAL, xt);
 
-	// Built-In VAR: (SOURCE)
+	// : HERE (HERE) @ ;
 	xt = Compile(MODE_BOOT,
-		I_LITERAL, SOURCE_ADDRESS,
+		I_CALL, xtHERE_ADDR, I_FETCH,
 		I_RETURN, COMPILE_BREAK);
-	int xtSourceP = Create(StringToMem(INPUT_BUFFER, _T("(SOURCE)")), FLAG_IS_NORMAL, xt);
+	int xtHERE = Create(StringToMem(INPUT_BUFFER, _T("HERE")), FLAG_IS_NORMAL, xt);
 
-	// SOURCE
-	xt = Compile(MODE_BOOT,
-		I_CALL, xtSourceP, I_FETCH,
-		I_CALL, xtCount,
-		I_RETURN, COMPILE_BREAK);
-	int xtSource = Create(StringToMem(INPUT_BUFFER, _T("SOURCE")), FLAG_IS_NORMAL, xt);
-
-	// .inc.
+	// : .inc. DUP @ 1+ SWAP ! ;
 	xt = Compile(MODE_BOOT,
 		I_DUP, I_FETCH, I_ONEPLUS, I_SWAP, I_STORE,
 		I_RETURN, COMPILE_BREAK);
 	int xtInc = Create(StringToMem(INPUT_BUFFER, _T(".inc.")), FLAG_IS_NORMAL, xt);
+
+	// : , HERE ! (HERE) .inc. ;
+	xt = Compile(MODE_BOOT,
+		I_CALL, xtHERE, I_STORE,
+		I_LITERAL, HERE_ADDRESS, 
+		I_CALL, xtInc,
+		I_RETURN, COMPILE_BREAK);
+	xtComma = Create(StringToMem(INPUT_BUFFER, _T(",")), FLAG_IS_NORMAL, xt);
+
+	// : COUNT DUP 1+ SWAP @ ;
+	xt = Compile(MODE_BOOT,
+		I_DUP, I_ONEPLUS, I_SWAP, I_FETCH,
+		I_RETURN, COMPILE_BREAK);
+	int xtCount = Create(StringToMem(INPUT_BUFFER, _T("COUNT")), FLAG_IS_NORMAL, xt);
+
+	// : (SOURCE) 5 ;
+	xt = Compile(MODE_BOOT,
+		I_LITERAL, SOURCE_ADDRESS,
+		I_RETURN, COMPILE_BREAK);
+	int xtSourceAddr = Create(StringToMem(INPUT_BUFFER, _T("(SOURCE)")), FLAG_IS_NORMAL, xt);
+
+	// : SOURCE (SOURCE) @ ;
+	xt = Compile(MODE_BOOT,
+		I_CALL, xtSourceAddr, I_FETCH,
+		I_CALL, xtCount,
+		I_RETURN, COMPILE_BREAK);
+	int xtSource = Create(StringToMem(INPUT_BUFFER, _T("SOURCE")), FLAG_IS_NORMAL, xt);
 
 	// .str+.
 	xt = Compile(MODE_BOOT,
@@ -560,31 +584,18 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 	int xtWord = Create(StringToMem(INPUT_BUFFER, _T(".word.")), FLAG_IS_NORMAL, xt);
 
-	// Built-In WORD: (LAST) ;
+	// : (LAST) 2 ;
 	xt = Compile(MODE_BOOT,
 		I_LITERAL, LAST_ADDRESS,
 		I_RETURN, COMPILE_BREAK);
-	int xtLASTP = Create(StringToMem(INPUT_BUFFER, _T("(LAST)")), FLAG_IS_NORMAL, xt);
+	int xtLASTAddr = Create(StringToMem(INPUT_BUFFER, _T("(LAST)")), FLAG_IS_NORMAL, xt);
 
-	// Built-In WORD: LAST ... : LAST (LAST) @ ;
+	// : LAST (LAST) @ ;
 	xt = Compile(MODE_BOOT,
-		I_CALL, xtLASTP, I_FETCH,
+		I_CALL, xtLASTAddr, I_FETCH,
 		I_RETURN, COMPILE_BREAK);
 	int xtLAST = Create(StringToMem(INPUT_BUFFER, _T("LAST")), FLAG_IS_NORMAL, xt);
 
-	// Built-In WORD: (HERE)
-	xt = Compile(MODE_BOOT,
-		I_LITERAL, HERE_ADDRESS,
-		I_RETURN, COMPILE_BREAK);
-	int xtHERE_ADDR = Create(StringToMem(INPUT_BUFFER, _T("(HERE)")), FLAG_IS_NORMAL, xt);
-
-	// Built-In WORD: HERE ... : HERE (HERE) @ ;
-	xt = Compile(MODE_BOOT,
-		I_CALL, xtHERE_ADDR, I_FETCH,
-		I_RETURN, COMPILE_BREAK);
-	int xtHERE = Create(StringToMem(INPUT_BUFFER, _T("HERE")), FLAG_IS_NORMAL, xt);
-
-	// Built-In WORD: CREATE ... 
 	/*
 	* : CREATE 
 	*     WORD
@@ -611,16 +622,7 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 	int xtCreate = Create(StringToMem(INPUT_BUFFER, _T("CREATE")), FLAG_IS_NORMAL, xt);
 
-	// Built-In WORD: , (COMMA) ... : , (HERE) @ SWAP OVER ! 1+ (HERE) ! ;
-	xt = Compile(MODE_BOOT,
-		I_LITERAL, HERE_ADDRESS, I_FETCH,
-		I_SWAP, I_OVER, I_STORE,
-		I_ONEPLUS,
-		I_LITERAL, HERE_ADDRESS, I_STORE,
-		I_RETURN, COMPILE_BREAK);
-	xtComma = Create(StringToMem(INPUT_BUFFER, _T(",")), FLAG_IS_NORMAL, xt);
-
-	// Built-In VAR: : (COLON)
+	// Built-in word ... : (COLON)
 	xt = Compile(MODE_BOOT,
 		I_CALL, xtCreate,
 		I_LITERAL, I_DICTP, I_CALL, xtComma, 
@@ -629,25 +631,7 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T(":")), FLAG_IS_NORMAL, xt);
 
-	//// Built-In VAR: STATE
-	//xt = Compile(MODE_BOOT,
-	//	I_LITERAL, STATE_ADDRESS, 
-	//	I_RETURN, COMPILE_BREAK);
-	//Create(StringToMem(INPUT_BUFFER, _T("STATE")), FLAG_IS_NORMAL, xt);
-
-	//// Built-In WORD: TIB
-	//xt = Compile(MODE_BOOTIF,
-	//	I_LITERAL, INPUT_BUFFER,
-	//	I_RETURN, COMPILE_BREAK);
-	//Create(StringToMem(INPUT_BUFFER, _T("TIB")), FLAG_IS_NORMAL, xt);
-
-	//// Built-In WORD: BASE
-	//xt = Compile(MODE_BOOT,
-	//	I_LITERAL, BASE_ADDRESS,
-	//	I_RETURN, COMPILE_BREAK);
-	//Create(StringToMem(INPUT_BUFFER, _T("BASE")), FLAG_IS_NORMAL, xt);
-
-	// Built-In WORD: @ (FETCH) ... : ! STATE @ IF <STORE> , ELSE [ <STORE> , ] THEN ; IMMEDIATE
+	// Built-In WORD: @ (FETCH) ... : ! STATE @ IF <I_FETCH> , ELSE [ <I_FETCH> , ] THEN ; IMMEDIATE
 	xt = Compile(MODE_BOOT,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
 		I_IF_RT, 5,
@@ -658,7 +642,7 @@ void ForthOS::BootStrap()
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("@")), FLAG_IS_IMMEDIATE, xt);
 
-	// Built-In WORD: ! (STORE) ... : ! STATE @ IF <FETCH> , ELSE [ <FETCH> , ] THEN ; IMMEDIATE
+	// : ! STATE @ IF <I_STORE> , ELSE [ <I_STORE> , ] THEN ; IMMEDIATE
 	xt = Compile(MODE_BOOT,
 		I_LITERAL, STATE_ADDRESS, I_FETCH,
 		I_IF_RT, 5,
@@ -671,12 +655,11 @@ void ForthOS::BootStrap()
 
 	// : IMMEDIATE 1 LAST 1+ ! ;
 	xt = Compile(MODE_BOOT,
-		I_LITERAL, 1, I_LITERAL, LAST_ADDRESS, I_FETCH,
-		I_ONEPLUS, I_STORE,
+		I_LITERAL, 1, I_CALL, xtLAST, I_ONEPLUS, I_STORE,
 		I_RETURN, COMPILE_BREAK);
 	Create(StringToMem(INPUT_BUFFER, _T("IMMEDIATE")), FLAG_IS_IMMEDIATE, xt);
 
-	// Built-In WORD: ; (SEMI-COLON) ... : ; <RETURN> , (TEMP_REG2) @ (LAST) ! 0 STATE ! ; IMMEDIATE
+	// Built-In WORD: ; (SEMI-COLON) ... : ; <RETURN> , 0 STATE ! ; IMMEDIATE
 	xt = Compile(MODE_BOOT,
 		I_LITERAL, I_RETURN,
 		I_CALL, xtComma,
