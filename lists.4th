@@ -1,5 +1,3 @@
-forget lists.4th
-
 : lists.4th ;
 
 // lists ... they look like this ...
@@ -45,6 +43,7 @@ forget lists.4th
 	repeat
 	;
 
+// NB: the payload is a standard counted array
 : list.add ( payload list --- new-node ) list.goto.last list.add.node ;
 
 // Create a new list like this ... first-payload list.new

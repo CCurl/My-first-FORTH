@@ -28,7 +28,7 @@
 : STDOUT       12 @ ;
 : STDERR       13 @ ;
 // : unused    14   ;
-: DBG.FLG      15 @ ;
+: DBG.FLG      15   ;
 : TIB         100   ;
 : CODE_START 1000   ;
 
@@ -213,7 +213,7 @@ VARIABLE .cw.
 				EXIT
 			THEN
 		ELSE 
-			EXIT
+			0 EXIT
 		THEN
 
 		word.next
@@ -326,6 +326,9 @@ VARIABLE .cw.
 : fopen.write.binary " wb" fopen ;
 : fread.line ." fread.line not implemented yet." ;
 
+: debug.on .cr 1 DBG.FLG ! ;
+: debug.on.high .cr 2 DBG.FLG ! ;
+: debug.off 0 DBG.FLG ! .cr ;
 break;
 
 // : src (source) @ ;
@@ -333,8 +336,6 @@ break;
 
 // variable cmds 100 allot
 
-// : dbg.on .cr 1 DBG.FLG ! ;
-// : dbg.off 0 DBG.FLG ! .cr ;
 // : .num. 777777 . ;
 // : .ew. dup head>body swap 1+ @ if execute else ?] if 30 , , else execute then then ;
 // : .pw. pad .fw. ?dup if .ew. else .num. then ;

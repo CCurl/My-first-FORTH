@@ -102,7 +102,7 @@ int ForthOS::DoExecute()
 	while (true)
 	{
 		INSTR_T instr = (INSTR_T)MemGet(IP++);
-		if ((MemGet(DEBUGFLAG_ADDRESS) != 0) && (input_fp != NULL))
+		if ((MemGet(DEBUGFLAG_ADDRESS) > 1) && (input_fp != NULL))
 		{
 			CString txt;
 			DumpInstr(IP - 1, txt);
@@ -112,12 +112,26 @@ int ForthOS::DoExecute()
 		switch (instr)
 		{
 		case I_CALL:
+			if ((MemGet(DEBUGFLAG_ADDRESS) == 1) && (input_fp != NULL))
+			{
+				CString txt;
+				DumpInstr(IP - 1, txt);
+				AppendOutput(txt);
+				AppendOutput(_T("\n"));
+			}
 			addr = MemGet(IP++);
 			RPUSH(IP);
 			IP = addr;
 			break;
 
 		case I_RETURN:
+			if ((MemGet(DEBUGFLAG_ADDRESS) == 1) && (input_fp != NULL))
+			{
+				CString txt;
+				DumpInstr(IP - 1, txt);
+				AppendOutput(txt);
+				AppendOutput(_T("\n"));
+			}
 			if (RSP > 0)
 				IP = RPOP();
 			else
@@ -1403,34 +1417,6 @@ void ForthOS::ExecuteWord(int PAD)
 			PUSH(num);
 		}
 		return;
-	}
-
-	if (StringIsString(PAD))
-	{
-		int len = MemGet(PAD++) - 2;
-		MemSet(PAD, len);
-		throw CString("quoted string not implemented.");
-		//if (MemGet(STATE_ADDRESS) == STATE_COMPILING) // Compiling?
-		//{
-		//	// Put addr of string on the stack
-		//	Compile(MODE_BOOT, I_LITERAL, num, COMPILE_BREAK);
-		//	//CommaLiteral(HERE() + 4);
-		//	COMMA(I_GOTO);
-		//	COMMA(HERE() + len + 2);
-		//	COMMA(len);
-		//	for (int i = 1; i <= len; i++)
-		//	{
-		//		COMMA(MemGet(PAD + i));
-		//	}
-		//}
-		//else
-		//{
-		//	name = name.Mid(1, name.GetLength() - 2);
-		//	StringToMem(HERE() + 1, name);
-		//	PUSH(HERE()+1);
-		//	// throw CString("quoted string not implemented.");
-		//}
-		// return;
 	}
 
 	// QUIT logic
