@@ -92,6 +92,7 @@ class ForthOS
 	int IP;
 	CString inputStream;
 	CString output;
+	CString currentWordName;
 
 	// Data stack
 	int SP, stack[STACK_SIZE];
@@ -156,8 +157,10 @@ class ForthOS
 	void Dump(CString& ret);
 	void DumpStack(CString& ret);
 	int DumpInstr(int xt, CString& ret);
+	int DumpInstr_ASM(int xt, CString& ret);
 	int See(int xt, CString& ret, int stopHere);
 	void ResolveCall(CString& ret, int addr);
+	void GetWordName(CString& ret, int addr);
 	void Load();
 	void Save();
 	void BootStrap();

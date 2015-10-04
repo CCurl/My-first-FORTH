@@ -714,10 +714,20 @@ void ForthOS::BootStrap()
 	Create(StringToMem(INPUT_BUFFER, _T("THEN")), FLAG_IS_IMMEDIATE, xt);
 }
 
+void ForthOS::GetWordName(CString& ret, int addr)
+{
+	ret.Empty();
+	addr += 3;
+	int len = MemGet(addr++);
+	for (int i = 0; i < len; i++)
+	{
+		CHAR c = MemGet(addr++);
+		ret.AppendChar(c);
+	}
+}
+
 void ForthOS::ResolveCall(CString& ret, int addr)
 {
-	ret.Append(_T(" ... "));
-	CString tmp;
 	addr += 3;
 	int len = MemGet(addr++);
 	for (int i = 0; i < len; i++)
@@ -729,6 +739,7 @@ void ForthOS::ResolveCall(CString& ret, int addr)
 
 int ForthOS::DumpInstr(int xt, CString& ret)
 {
+	CString tmp;
 	int addr = 0, val;
 	ret.Format(_T("%04d: "), xt);
 
@@ -737,9 +748,10 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	{
 	case I_CALL:
 		addr = MemGet(xt++);
-		ret.AppendFormat(_T("I_CALL %04d"), addr);
+		ret.AppendFormat(_T("CALL %04d"), addr);
 		addr = MemGet(addr + 1);
-		ResolveCall(ret, addr);
+		GetWordName(tmp, addr);
+		ret.Append(tmp);
 		break;
 
 	case I_RETURN:
@@ -775,10 +787,10 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 		ret.AppendFormat(_T("I_ROT"));
 		break;
 
-	// These are obsolete ...
-	// case I_IF:
-	// case I_ELSE:
-	// case I_THEN:
+		// These are obsolete ...
+		// case I_IF:
+		// case I_ELSE:
+		// case I_THEN:
 
 	case I_IF_RT:
 		ret.AppendFormat(_T("I_IF_RT"));
@@ -871,7 +883,7 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	case I_EMIT:
 		ret.AppendFormat(_T("I_EMIT"));
 		break;
-		
+
 	case I_TO_R:
 		ret.AppendFormat(_T("I_TO_R (>R)"));
 		break;
@@ -887,6 +899,7 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	case I_DICTP:
 		addr = MemGet(xt++);
 		ret.AppendFormat(_T("I_DICTP (%04d)"), addr);
+		GetWordName(tmp, addr);
 		ResolveCall(ret, addr);
 		break;
 
@@ -914,18 +927,209 @@ int ForthOS::DumpInstr(int xt, CString& ret)
 	return xt;
 }
 
+int ForthOS::DumpInstr_ASM(int xt, CString& ret)
+{
+	int addr = 0, val = 0;
+	CString tmp, ldz = _T("\r\n        ");
+	ret.Format(_T("a%05d: "), xt);
+
+	INSTR_T instr = (INSTR_T)MemGet(xt++);
+	switch (instr)
+	{
+	case I_CALL:
+		addr = MemGet(xt++);
+		ResolveCall(tmp, MemGet(addr + 1));
+		ret.AppendFormat(_T("call a%05d ; %s"), addr, tmp);
+		break;
+
+	case I_RETURN:
+		ret.AppendFormat(_T("ret"));
+		break;
+
+	case I_STORE:
+		ret.AppendFormat(_T("call dsStore"));
+		break;
+
+	case I_FETCH:
+		ret.AppendFormat(_T("call dsFetch"));
+		break;
+
+	case I_LITERAL:
+		val = MemGet(xt++);
+		ret.AppendFormat(_T("mov edx, %d ; LITERAL%scall dsPush"), val, ldz);
+		break;
+
+	case I_DROP:
+		ret.AppendFormat(_T("call dsPop ; DROP"));
+		break;
+
+	case I_SWAP:
+		ret.AppendFormat(_T("call dsSwap ; SWAP"), ldz, ldz);
+		break;
+
+	case I_DUP:
+		ret.AppendFormat(_T("call dsDup ; DUP"), val, ldz);
+		break;
+
+	case I_ROT:
+		ret.AppendFormat(_T("call dsRot ; ROT"));
+		break;
+
+	// These are obsolete ...
+	// case I_IF:
+	// case I_ELSE:
+	// case I_THEN:
+
+	case I_IF_RT:
+		ret.AppendFormat(_T("NOP"));
+		// If FALSE, JUMP to ELSE or THEN
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T("; for now ... (0 = IF GOTO %d)"), addr);
+		break;
+
+	case I_GOTO:
+		addr = MemGet(xt++);
+		ret.AppendFormat(_T("jmp a%05d ; GOTO"), addr);
+		break;
+
+	case I_DO:
+		ret.AppendFormat(_T("call fDo ; DO"));
+		break;
+
+	case I_I:
+		ret.AppendFormat(_T("call fDo_I ; I"));
+		break;
+
+	case I_LEAVE:
+		ret.AppendFormat(_T("call fDo_Leave ; LEAVE"));
+		break;
+
+	case I_PLUSLOOP:
+		ret.AppendFormat(_T("call fDo_PlusLoop ; +LOOP"));
+		break;
+
+	case I_LOOP:
+		ret.AppendFormat(_T("call fDo_Loop ; LOOP"));
+		break;
+
+	case I_ONEPLUS:
+		ret.AppendFormat(_T("call fOnePlus ; 1+"));
+		break;
+
+	case I_ONEMINUS:
+		ret.AppendFormat(_T("call fOneMinus ; 1-"));
+		break;
+
+	case I_PLUS:
+		ret.AppendFormat(_T("call fPlus ; +"));
+		break;
+
+	case I_MINUS:
+		ret.AppendFormat(_T("call fMinus ; -"));
+		break;
+
+	case I_MULT:
+		ret.AppendFormat(_T("call fMult ; *"));
+		break;
+
+	case I_DIV:
+		ret.AppendFormat(_T("call fDivide ; /"));
+		break;
+
+	case I_EQ:
+		ret.AppendFormat(_T("call fEquals ; ="));
+		break;
+
+	case I_NOT:
+		ret.AppendFormat(_T("call fNot ; NOT"));
+		break;
+
+	case I_NEQ:
+		ret.AppendFormat(_T("call fNotEquals ; <>"));
+		break;
+
+	case I_GT:
+		ret.AppendFormat(_T("call fGT ; >"));
+		break;
+
+	case I_LT:
+		ret.AppendFormat(_T("call fLT ; <"));
+		break;
+
+	case I_OVER:
+		ret.AppendFormat(_T("call fOver ; OVER"));
+		break;
+
+	case I_PICK:
+		ret.AppendFormat(_T("call fPick ; PICK"));
+		break;
+
+	case I_DOT:
+		ret.AppendFormat(_T("call fDot ; ."));
+		break;
+
+	case I_EMIT:
+		ret.AppendFormat(_T("call fEmit ; EMIT"));
+		break;
+		
+	case I_TO_R:
+		ret.AppendFormat(_T("call fToR ; >R"));
+		break;
+
+	case I_R_FROM:
+		ret.AppendFormat(_T("call fRFrom ; R>"));
+		break;
+
+	case I_R_AT:
+		ret.AppendFormat(_T("call fRAt ; R@"));
+		break;
+
+	case I_DICTP:
+		ret.Empty();
+		if (!currentWordName.IsEmpty())
+		{
+			ret.AppendFormat(_T("; %s ENDP\r\n"), currentWordName);
+		}
+		addr = MemGet(xt++);
+		GetWordName(tmp, addr);
+		currentWordName = tmp;
+		ret.AppendFormat(_T("\r\n; %s PROC\r\n"), currentWordName);
+		ret.AppendFormat(_T("a%05d: "), xt-2);
+		ret.AppendFormat(_T("mov eax, %d ; DICTP (%04d)"), addr, addr);
+		break;
+
+	case I_FOPEN:
+		ret.AppendFormat(_T("call fFileOpen ; FOPEN"));
+		break;
+
+	case I_FCLOSE:
+		ret.AppendFormat(_T("call fFileClose ; FCLOSE"));
+		break;
+
+	case I_FREAD:
+		ret.AppendFormat(_T("call fFileRead ; FREAD"));
+		break;
+
+	case I_FWRITE:
+		ret.AppendFormat(_T("call fFileWrite ; FWRITE"));
+		break;
+
+	default:
+		// Not an instruction
+		ret.AppendFormat(_T("NOP ; %d"), instr);
+		break;
+	}
+	return xt;
+}
+
 int ForthOS::See(int xt, CString& ret, int stopHere)
 {
 	CString def;
-	ret.Empty();
+	ret = _T("\r\n");
 
 	while (xt < stopHere)
 	{
-		if (MemGet(xt) == I_DICTP)
-		{
-			ret.Append(_T("\r\n"));
-		}
-		xt = DumpInstr(xt, def);
+		xt = DumpInstr_ASM(xt, def);
 		ret.AppendFormat(_T("%s\r\n"), def);
 	}
 	return xt;
@@ -942,15 +1146,15 @@ void ForthOS::DumpStack(CString& ret)
 
 void ForthOS::Dump(CString& ret)
 {
-	ret.Empty();
+	ret = _T("; ");
 
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i <= 15; i++)
 	{
-		ret.AppendFormat(_T("   [%-2d] %-4d"), i, MemGet(i));
-		if ((i % 10 == 0) && (i > 0))
-			ret.Append(_T("\r\n"));
+		if ((i % 5 == 0) && (i > 0))
+			ret.Append(_T("\r\n; "));
+		ret.AppendFormat(_T("[%02d: %05d] "), i, MemGet(i));
 	}
-	ret.Append(_T("\r\n\r\n"));
+	ret.Append(_T("\r\n"));
 
 	int entryStart = MemGet(LAST_ADDRESS);
 	int entrySize = MemGet(entryStart);
@@ -960,7 +1164,7 @@ void ForthOS::Dump(CString& ret)
 		int addr = entryStart;
 		entrySize = MemGet(addr++);
 		if (entrySize == 0)
-			continue;
+			continue; 
 		int flags = MemGet(addr++);
 		int isImmediate = (flags & 0x0001) != 0;
 		int xt = MemGet(addr++);
@@ -971,13 +1175,15 @@ void ForthOS::Dump(CString& ret)
 		{
 			name.AppendChar((CHAR)MemGet(addr + i));
 		}
-		ret.AppendFormat(_T("[%04d] %d, %d, %d, %d, %s\r\n"), entryStart, entrySize, isImmediate, xt, nameLen, name);
+		ret.AppendFormat(_T("\r\n; %04d, %2d, %d, %d, %d, \"%s\""), entryStart, entrySize, isImmediate, xt, nameLen, name);
 		entryStart += (entrySize+1);
 	}
 
 	CString code;
 	See(CODE_START, code, HERE());
-	ret.Append(_T("\r\n"));
+
+	code.AppendFormat(_T("; %s ENDP\r\n"), currentWordName);
+	currentWordName.Empty();
 	ret.Append(code);
 }
 

@@ -6,6 +6,7 @@
 
 #include "vm.h"
 #include "ForthOS.h"
+#include "afxwin.h"
 
 // CForthDlg dialog
 class CForthDlg : public CDialogEx
@@ -43,4 +44,5 @@ public:
 	CString output;
 	CString stack;
 	CString memDump;
+	CEdit editMemDump;
 };

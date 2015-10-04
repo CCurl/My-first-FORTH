@@ -39,6 +39,7 @@ void CForthDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_OUTPUT, output);
 	DDX_Text(pDX, IDC_STACK, stack);
 	DDX_Text(pDX, IDC_MEMDUMP, memDump);
+	DDX_Control(pDX, IDC_MEMDUMP, editMemDump);
 }
 
 BEGIN_MESSAGE_MAP(CForthDlg, CDialogEx)
@@ -81,6 +82,9 @@ BOOL CForthDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+	CFont *pFont = new CFont();
+	pFont->CreatePointFont(80, _T("Courier New"));
+	editMemDump.SetFont(pFont);
 	UpdateData(FALSE);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
